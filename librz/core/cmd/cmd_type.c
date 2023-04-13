@@ -92,8 +92,12 @@ static RzCmdStatus type_format_print(RzCore *core, const char *type, ut64 addres
 		free(fmt);
 		return RZ_CMD_STATUS_ERROR;
 	}
-	// TODO: Convert to the API
-	rz_core_cmdf(core, "pf %s @ 0x%08" PFMT64x "\n", fmt, address);
+	ut64 oldoff = core->offset;
+	rz_core_seek(core, address, true);
+	char *r = rz_core_print_format(core, fmt, RZ_PRINT_MUSTSEE);
+	rz_cons_print(r);
+	free(r);
+	rz_core_seek(core, oldoff, true);
 	free(fmt);
 	return RZ_CMD_STATUS_OK;
 }
@@ -118,8 +122,12 @@ static RzCmdStatus type_format_print_variable(RzCore *core, const char *type, co
 		return RZ_CMD_STATUS_ERROR;
 	}
 	ut64 addr = rz_core_analysis_var_addr(core, var);
-	// TODO: Convert to the API
-	rz_core_cmdf(core, "pf %s @ 0x%08" PFMT64x "\n", fmt, addr);
+	ut64 oldoff = core->offset;
+	rz_core_seek(core, addr, true);
+	char *r = rz_core_print_format(core, fmt, RZ_PRINT_MUSTSEE);
+	rz_cons_print(r);
+	free(r);
+	rz_core_seek(core, oldoff, true);
 	free(fmt);
 	return RZ_CMD_STATUS_OK;
 }

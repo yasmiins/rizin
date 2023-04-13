@@ -2015,8 +2015,14 @@ RZ_IPI RzCmdStatus rz_analysis_global_variable_print_handler(RzCore *core, int a
 		free(fmt);
 		return RZ_CMD_STATUS_ERROR;
 	}
-	// TODO: Convert to the API
-	rz_core_cmdf(core, "pf %s @ 0x%08" PFMT64x "\n", fmt, glob->addr);
+	ut64 oldoff = core->offset;
+	rz_core_seek(core, glob->addr, true);
+	char *r = rz_core_print_format(core, fmt, RZ_PRINT_MUSTSEE);
+	if (r) {
+		rz_cons_print(r);
+	}
+	free(r);
+	rz_core_seek(core, oldoff, true);
 	free(fmt);
 	return RZ_CMD_STATUS_OK;
 }

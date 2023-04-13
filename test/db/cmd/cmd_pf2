@@ -19,10 +19,10 @@ e asm.bits=32
 wx 341289679a020000a00f00002a003000000014426416
 wx 800600000040 @ 0x20
 wx 14000000641620000000 @ 0x30
-pf.troll iw*? integer word (troll)Bah
-pf.plop i?w first (troll)Boh bwa
-pf.gobelin 2ww?x blah meh (plop)Buh foo
-pfj.gobelin
+pfn troll "iw*? integer word (troll)Bah"
+pfn plop "i?w first (troll)Boh bwa"
+pfn gobelin "2ww?x blah meh (plop)Buh foo"
+pfj .gobelin
 EOF
 EXPECT=<<EOF
 [[{"index":0,"offset":0},{"name":"blah","type":"w","offset":0,"value":4660},{"name":"meh","type":"w","offset":2,"value":26505},{"name":"Buh","type":"plop","offset":4,"value":[{"name":"first","type":"i","offset":4,"value":666},{"name":"Boh","type":"troll","offset":8,"value":[{"name":"integer","type":"i","offset":8,"value":4000},{"name":"word","type":"w","offset":12,"value":42},{"name":"Bah","type":"troll*","offset":14,"value":48},{"name":"integer","type":"i","offset":48,"value":20},{"name":"word","type":"w","offset":52,"value":5732},{"name":"Bah","type":"troll*","offset":54,"value":32},{"name":"integer","type":"i","offset":32,"value":1664},{"name":"word","type":"w","offset":36,"value":16384},{"name":"Bah","type":"troll*","offset":38,"value":"NULL"}]},{"name":"bwa","type":"w","offset":18,"value":16916}]},{"name":"foo","type":"x","offset":20,"value":5732}],[{"index":1,"offset":24},{"name":"blah","type":"w","offset":24,"value":0},{"name":"meh","type":"w","offset":26,"value":0},{"name":"Buh","type":"plop","offset":28,"value":[{"name":"first","type":"i","offset":28,"value":0},{"name":"Boh","type":"troll","offset":32,"value":[{"name":"integer","type":"i","offset":32,"value":1664},{"name":"word","type":"w","offset":36,"value":16384},{"name":"Bah","type":"troll*","offset":38,"value":"NULL"}]},{"name":"bwa","type":"w","offset":42,"value":0}]},{"name":"foo","type":"x","offset":44,"value":0}]]
@@ -36,11 +36,11 @@ e asm.bits=32
 wx 341289679a020000a00f00002a003000000014426416
 wx 800600000040 @ 0x20
 wx 14000000641620000000 @ 0x30
-pf.troll iw*? integer word (troll)Bah
-pf.plop i?w first (troll)Boh bwa
-pf.gobelin ww?x blah meh (plop)Buh foo
-pf.gobelin.Buh.first
-pf.gobelin.Buh.Boh.word
+pfn troll "iw*? integer word (troll)Bah"
+pfn plop "i?w first (troll)Boh bwa"
+pfn gobelin "ww?x blah meh (plop)Buh foo"
+pf. gobelin.Buh.first
+pf. gobelin.Buh.Boh.word
 EOF
 EXPECT=<<EOF
   Buh : 
@@ -59,10 +59,10 @@ FILE=malloc://1024
 CMDS=<<EOF
 e asm.bits=32
 wx a00f0000adde @ 0x10
-pf.plop iwqw one two three four
-pf.troll [3]? (plop)str
-pf.troll.str[1]
-pf.troll.str[1].two
+pfn plop "iwqw one two three four"
+pfn troll "[3]? (plop)str"
+pf. troll.str[1]
+pf. troll.str[1].two
 EOF
 EXPECT=<<EOF
  str : 
@@ -87,8 +87,8 @@ ARGS=-nn
 CMDS=<<EOF
 e asm.bits=32
 s 0x80
-pf.pe_dos_header.e_res[2]
-pf.pe_dos_header.e_res2[8]
+pf. pe_dos_header.e_res[2]
+pf. pe_dos_header.e_res2[8]
 EOF
 EXPECT=<<EOF
       e_res : 0x000000a0 = [ 0x3400 ]
@@ -103,14 +103,14 @@ e asm.bits=32
 wx 341289679a020000a00f00002a003000000014426416
 wx 800600000040 @ 0x20
 wx 14000000641620000000 @ 0x30
-pf.troll iw*? integer word (troll)Bah
-pf.plop i?w first (troll)Boh bwa
-pf.gobelin ww?x blah meh (plop)Buh foo
-pf.gobelin.Buh.first=42
+pfn troll "iw*? integer word (troll)Bah"
+pfn plop "i?w first (troll)Boh bwa"
+pfn gobelin "ww?x blah meh (plop)Buh foo"
+pfw gobelin.Buh.first=42
 .pf.gobelin.Buh.first=42
-pf.gobelin.Buh.Boh.Bah.Bah.word=0xadde
+pfw gobelin.Buh.Boh.Bah.Bah.word=0xadde
 .pf.gobelin.Buh.Boh.Bah.Bah.word=0xadde
-pf.gobelin
+pf. gobelin
 EOF
 EXPECT=<<EOF
 wv4 42 @ 4
@@ -143,11 +143,11 @@ FILE=malloc://1024
 CMDS=<<EOF
 e asm.bits=32
 wx 71776572747975696f706173646667686a6b6c7a786376626e6d71776572747975696f706173646667686a6b6c7a786376626e6d
-pf.dsf ii a b
-pf.abc ic...?i a b (pf i?i a (dsf)b c)c d
-pf.def ic...*?i a b (pf i?i a (dsf)b c)c d
-pf.abc
-pf.def
+pfn dsf "ii a b"
+pfn abc "ic...?i a b (pf i?i a (dsf)b c)c d"
+pfn def "ic...*?i a b (pf i?i a (dsf)b c)c d"
+pf. abc
+pf. def
 EOF
 EXPECT=<<EOF
  a : 0x00000000 = 1919252337
@@ -388,24 +388,22 @@ EXPECT=<<EOF
 EOF
 RUN
 
-NAME=pf?
+NAME=pfn
 FILE==
 CMDS=<<EOF
 pfo elf32
-pf?elf_header
-pf? elf_header
+pfn elf_header
 EOF
 EXPECT=<<EOF
-?[2]E[2]E[4]ExxxxN2N2N2N2N2N2 (elf_ident)ident (elf_type)type (elf_machine)machine (elf_obj_version)version entry phoff shoff flags ehsize phentsize phnum shentsize shnum shstrndx
 ?[2]E[2]E[4]ExxxxN2N2N2N2N2N2 (elf_ident)ident (elf_type)type (elf_machine)machine (elf_obj_version)version entry phoff shoff flags ehsize phentsize phnum shentsize shnum shstrndx
 EOF
 RUN
 
-NAME=pf? struct not defined
+NAME=pfn format not defined
 FILE==
-CMDS=pf?cat_sat_on_keyboard
+CMDS=pfn cat_sat_on_keyboard
 EXPECT_ERR=<<EOF
-ERROR: core: Struct cat_sat_on_keyboard is not defined
+ERROR: Format with "cat_sat_on_keyboard" name not found
 EOF
 RUN
 
@@ -414,7 +412,7 @@ FILE=bins/elf/analysis/tiny1@invalid_addr
 ARGS=-nn
 CMDS=<<EOF
 e io.va=0
-pf.elf_header @ elf_header
+pf. elf_header @ elf_header
 EOF
 EXPECT=<<EOF
      ident : 

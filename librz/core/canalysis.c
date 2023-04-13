@@ -4396,8 +4396,9 @@ RZ_API RZ_OWN char *rz_core_analysis_var_display(RZ_NONNULL RzCore *core, RZ_NON
 			// TODO: convert to API
 			r = rz_core_cmd_strf(core, "pxr $w @r:%s", var->storage.reg);
 		} else {
-			// TODO: convert to API
-			r = rz_core_cmd_strf(core, "pf r (%s)", var->storage.reg);
+			char *regfmt = rz_str_newf("r (%s)", var->storage.reg);
+			r = rz_core_print_format(core, regfmt, RZ_PRINT_MUSTSEE);
+			free(regfmt);
 		}
 		rz_strbuf_append(sb, r);
 		free(r);
@@ -4410,8 +4411,10 @@ RZ_API RZ_OWN char *rz_core_analysis_var_display(RZ_NONNULL RzCore *core, RZ_NON
 			// TODO: convert to API
 			r = rz_core_cmd_strf(core, "pxr $w @ 0x%" PFMT64x, addr);
 		} else {
-			// TODO: convert to API
-			r = rz_core_cmd_strf(core, "pf %s @ 0x%" PFMT64x, fmt, addr);
+			ut64 oldoff = core->offset;
+			rz_core_seek(core, addr, true);
+			r = rz_core_print_format(core, fmt, RZ_PRINT_MUSTSEE);
+			rz_core_seek(core, oldoff, true);
 		}
 		rz_strbuf_append(sb, r);
 		free(r);
