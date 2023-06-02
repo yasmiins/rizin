@@ -258,7 +258,7 @@ RZ_API void rz_type_db_init(RzTypeDB *typedb, const char *types_dir, const char 
 	rz_return_if_fail(typedb && typedb->types && typedb->formats);
 
 	// A workaround to fix loading incorrectly detected MacOS binaries
-	if (os && RZ_STR_ISNOTEMPTY(os) && !strcmp(os, "darwin")) {
+	if (RZ_STR_ISNOTEMPTY(os) && !strcmp(os, "darwin")) {
 		os = "macos";
 	}
 
