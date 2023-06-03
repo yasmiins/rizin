@@ -436,6 +436,7 @@ RZ_API RzDebug *rz_debug_free(RzDebug *dbg) {
 		free(dbg->arch);
 		free(dbg->glob_libs);
 		free(dbg->glob_unlibs);
+		free(dbg->plugin_data);
 		free(dbg);
 	}
 	return NULL;
