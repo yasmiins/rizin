@@ -1715,7 +1715,7 @@ static RzList /*<RzBinReloc *>*/ *relocs(RzBinFile *bf) {
 
 	patch_relocs(bf, bin);
 
-	if (!(ret = rz_list_newf(free))) {
+	if (!(ret = rz_list_newf((RzListFree)rz_bin_reloc_free))) {
 		return NULL;
 	}
 

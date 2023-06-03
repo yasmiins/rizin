@@ -269,6 +269,7 @@ static RzType *parse_type(Context *ctx, const ut64 offset, RZ_NULLABLE ut64 *siz
 			rz_type_free(return_type);
 			goto end;
 		}
+		callable->ret = return_type;
 		ret = rz_type_callable(callable);
 		if (!ret) {
 			rz_type_callable_free(callable);
@@ -1234,6 +1235,16 @@ static RZ_DEPRECATE char *type_as_string(const RzTypeDB *typedb, RZ_NONNULL cons
 		RZ_TYPE_PRINT_ZERO_VLA | RZ_TYPE_PRINT_NO_END_SEMICOLON | RZ_TYPE_PRINT_ANONYMOUS | RZ_TYPE_PRINT_ALLOW_NON_EXISTENT_BASE_TYPE, 0);
 }
 
+static void sdb_set_and_free(Sdb *db, char *k, char *v) {
+	sdb_set_owned(db, k, v, 0);
+	free(k);
+}
+
+static void sdb_set_and_freek(Sdb *db, char *k, const char *v) {
+	sdb_set(db, k, v, 0);
+	free(k);
+}
+
 static st32 parse_function_args_and_vars(Context *ctx, ut64 idx, RzStrBuf *args, RzList /*<Variable *>*/ *variables) {
 	const RzBinDwarfDie *die = &ctx->all_dies[idx++];
 
@@ -1371,9 +1382,7 @@ static inline void sdb_save_dwarf_fcn_vars(Sdb *sdb, RzList /*<Variable *>*/ *va
 		if (!val) {
 			continue;
 		}
-		char *key = rz_str_newf("%s.%s", prefix, var->name);
-		sdb_set_owned(sdb, key, val, 0);
-		free(key);
+		sdb_set_and_free(sdb, rz_str_newf("%s.%s", prefix, var->name), val);
 
 		if (iter->n) {
 			rz_strbuf_appendf(sb, "%s,", var->name);
@@ -1381,9 +1390,7 @@ static inline void sdb_save_dwarf_fcn_vars(Sdb *sdb, RzList /*<Variable *>*/ *va
 			rz_strbuf_append(sb, var->name);
 		}
 	}
-	char *key = rz_str_newf("%ss", prefix);
-	sdb_set_owned(sdb, key, rz_strbuf_drain(sb), 0);
-	free(key);
+	sdb_set_and_free(sdb, rz_str_newf("%ss", prefix), rz_strbuf_drain(sb));
 }
 
 static void
@@ -1391,19 +1398,10 @@ sdb_save_dwarf_function(Function *dwarf_fcn, RzList /*<Variable *>*/ *variables,
 	char *sname = rz_str_sanitize_sdb_key(dwarf_fcn->name);
 	sdb_set(sdb, sname, "fcn", 0);
 
-	char *addr_key = rz_str_newf("fcn.%s.addr", sname);
-	char *addr_val = rz_str_newf("0x%" PFMT64x "", dwarf_fcn->addr);
-	sdb_set_owned(sdb, addr_key, addr_val, 0);
-	free(addr_key);
-
+	sdb_set_and_free(sdb, rz_str_newf("fcn.%s.addr", sname), rz_str_newf("0x%" PFMT64x "", dwarf_fcn->addr));
 	/* so we can have name without sanitization */
-	char *name_key = rz_str_newf("fcn.%s.name", sname);
-	sdb_set(sdb, name_key, dwarf_fcn->name, 0);
-	free(name_key);
-
-	char *signature_key = rz_str_newf("fcn.%s.sig", sname);
-	sdb_set(sdb, signature_key, dwarf_fcn->signature, 0);
-	free(signature_key);
+	sdb_set_and_freek(sdb, rz_str_newf("fcn.%s.name", sname), dwarf_fcn->name);
+	sdb_set_and_freek(sdb, rz_str_newf("fcn.%s.sig", sname), dwarf_fcn->signature);
 
 	RzList *args = rz_list_new();
 	RzList *vars = rz_list_new();
@@ -1421,6 +1419,7 @@ sdb_save_dwarf_function(Function *dwarf_fcn, RzList /*<Variable *>*/ *variables,
 	sdb_save_dwarf_fcn_vars(sdb, args, prefix);
 	rz_list_free(args);
 	free(prefix);
+
 	prefix = rz_str_newf("fcn.%s.var", sname);
 	sdb_save_dwarf_fcn_vars(sdb, vars, prefix);
 	rz_list_free(vars);

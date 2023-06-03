@@ -425,7 +425,7 @@ static RzList /*<RzBinImport *>*/ *imports(RzBinFile *bf) {
 		rz_list_free(((struct PE_(rz_bin_pe_obj_t) *)bf->o->bin_obj)->relocs);
 	}
 
-	if (!(relocs = rz_list_newf(free))) {
+	if (!(relocs = rz_list_newf((RzListFree)rz_bin_reloc_free))) {
 		free(ret);
 		return NULL;
 	}

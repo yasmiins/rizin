@@ -6,6 +6,7 @@
 #include <rz_list.h>
 
 #include "mdmp_pe.h"
+#include "rz_bin.h"
 
 static void PE_(add_tls_callbacks)(struct PE_(rz_bin_pe_obj_t) * bin, RzList /*<RzBinAddr *>*/ *list) {
 	char *key;
@@ -97,7 +98,7 @@ RzList /*<RzBinImport *>*/ *PE_(rz_bin_mdmp_pe_get_imports)(struct PE_(rz_bin_md
 
 	imports = PE_(rz_bin_pe_get_imports)(pe_bin->bin);
 	ret = rz_list_new();
-	relocs = rz_list_newf(free);
+	relocs = rz_list_newf((RzListFree)rz_bin_reloc_free);
 
 	if (!imports || !ret || !relocs) {
 		free(imports);
@@ -132,7 +133,7 @@ RzList /*<RzBinImport *>*/ *PE_(rz_bin_mdmp_pe_get_imports)(struct PE_(rz_bin_md
 			offset -= pe_bin->vaddr;
 		}
 		rel->additive = 0;
-		rel->import = ptr;
+		rel->import = rz_bin_import_clone(ptr);
 		rel->addend = 0;
 		rel->vaddr = offset + pe_bin->vaddr;
 		rel->paddr = imports[i].paddr + pe_bin->paddr;
