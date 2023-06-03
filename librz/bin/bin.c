@@ -131,6 +131,8 @@ RZ_API RzBinImport *rz_bin_import_clone(RzBinImport *o) {
 	RzBinImport *res = rz_mem_dup(o, sizeof(*o));
 	if (res) {
 		res->name = RZ_STR_DUP(o->name);
+		res->dname = RZ_STR_DUP(o->dname);
+		res->libname = RZ_STR_DUP(o->libname);
 		res->classname = RZ_STR_DUP(o->classname);
 		res->descriptor = RZ_STR_DUP(o->descriptor);
 	}
@@ -191,6 +193,16 @@ RZ_API void rz_bin_symbol_free(RZ_NULLABLE RzBinSymbol *sym) {
 }
 
 RZ_API void rz_bin_reloc_free(RZ_NULLABLE RzBinReloc *reloc) {
+	if (!reloc) {
+		return;
+	}
+	/**
+	 * TODO: leak in bin_elf, but it will cause double free in bin_pe if free here,
+	 * Because in the bin_elf implementation RzBinObject->imports and RzBinObject->relocs->imports
+	 * are two pieces of data, but they are linked to each other in bin_pe
+	 */
+	//	rz_bin_import_free(reloc->import);
+	//	rz_bin_symbol_free(reloc->symbol);
 	free(reloc);
 }
 

@@ -81,14 +81,12 @@ static RzCallable *get_callable_type(RzTypeDB *typedb, Sdb *sdb, const char *nam
 			free(values);
 			goto error;
 		}
-		RzCallableArg *arg = RZ_NEW0(RzCallableArg);
+		RzCallableArg *arg = rz_type_callable_arg_new(typedb, argument_name, ttype);
 		if (!arg) {
 			free(values);
 			rz_type_free(ttype);
 			goto error;
 		}
-		arg->name = strdup(argument_name);
-		arg->type = ttype;
 		free(values);
 
 		void *element = rz_pvector_push(callable->args, arg); // returns null if no space available

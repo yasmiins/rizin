@@ -1184,7 +1184,7 @@ RZ_API RZ_OWN RzType *rz_type_clone(RZ_BORROW RZ_NONNULL const RzType *type) {
 		newtype->kind = type->kind;
 		newtype->identifier.kind = type->identifier.kind;
 		newtype->identifier.is_const = type->identifier.is_const;
-		newtype->identifier.name = strdup(type->identifier.name);
+		newtype->identifier.name = rz_str_new(type->identifier.name);
 		break;
 	case RZ_TYPE_KIND_ARRAY:
 		newtype->kind = RZ_TYPE_KIND_ARRAY;
