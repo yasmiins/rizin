@@ -94,13 +94,12 @@ static inline char *create_type_name_from_offset(ut64 offset) {
  * \return char* DIEs name or NULL if error
  */
 static char *get_die_name(const RzBinDwarfDie *die) {
-	char *name = NULL;
 	st32 name_attr_idx = find_attr_idx(die, DW_AT_name);
 	if (name_attr_idx != -1) {
 		const char *s = rz_bin_dwarf_attr_value_get_string_content(&die->attr_values[name_attr_idx]);
-		name = RZ_STR_DUP(s);
+		return RZ_STR_DUP(s);
 	}
-	return name ? name : create_type_name_from_offset(die->offset);
+	return create_type_name_from_offset(die->offset);
 }
 
 /**
@@ -467,22 +466,16 @@ static void parse_structure_type(Context *ctx, const RzBinDwarfDie *die) {
 
 	RzBaseType *base_type = rz_type_base_type_new(kind);
 	if (!base_type) {
-		return;
+		goto fail;
 	}
-
 	base_type->name = get_die_name(die);
-	if (!base_type->name) {
-		rz_type_base_type_free(base_type);
-		return;
-	}
 
 	// if it is definition of previous declaration (TODO Fix, big ugly hotfix addition)
 	st32 spec_attr_idx = find_attr_idx(die, DW_AT_specification);
 	if (spec_attr_idx != -1) {
 		RzBinDwarfDie *decl_die = ht_up_find(ctx->die_map, die->attr_values[spec_attr_idx].reference, NULL);
 		if (!decl_die) {
-			rz_type_base_type_free(base_type);
-			return;
+			goto fail;
 		}
 		st32 name_attr_idx = find_attr_idx(decl_die, DW_AT_name);
 		if (name_attr_idx != -1) {
@@ -500,19 +493,18 @@ static void parse_structure_type(Context *ctx, const RzBinDwarfDie *die) {
 		if (child_depth == 1 && child->tag == DW_TAG_member) {
 			RzTypeStructMember *result = parse_struct_member(ctx, child, &member);
 			if (!result) {
-				rz_type_base_type_free(base_type);
-				return;
-			} else {
-				void *element = rz_vector_push(&base_type->struct_data.members, &member);
-				if (!element) {
-					rz_type_base_type_free(base_type);
-					return;
-				}
+				goto fail;
+			}
+			void *element = rz_vector_push(&base_type->struct_data.members, &member);
+			if (!element) {
+				goto fail;
 			}
 		}
 	}
 	foreach_children_end(child);
 	rz_type_db_save_base_type(ctx->analysis->typedb, base_type);
+fail:
+	rz_type_base_type_free(base_type);
 }
 
 /**
@@ -1251,34 +1243,33 @@ static st32 parse_function_args_and_vars(Context *ctx, const RzBinDwarfDie *die,
 			if (child->tag == DW_TAG_formal_parameter && child_depth == 1) {
 				var->kind = RZ_ANALYSIS_VAR_KIND_FORMAL_PARAMETER;
 				/* arguments sometimes have only type, create generic argX */
-				if (type) {
-					if (!name) {
-						var->name = rz_str_newf("arg%d", argNumber);
-					} else {
-						var->name = strdup(name);
-					}
-					char *type_str = type_as_string(ctx->analysis->typedb, type);
-					size_t tmp_len = strlen(type_str);
-					rz_strbuf_appendf(args, "%s%s%s, ", type_str,
-						tmp_len && type_str[tmp_len - 1] == '*' ? "" : " ",
-						var->name);
-
-					var->type = type_str;
-					rz_list_append(variables, var);
-				} else {
-					variable_free(var);
+				if (!type) {
+					goto fail_inner;
 				}
+				if (!name) {
+					var->name = rz_str_newf("arg%d", argNumber);
+				} else {
+					var->name = strdup(name);
+				}
+				char *type_str = type_as_string(ctx->analysis->typedb, type);
+				size_t tmp_len = strlen(type_str);
+				rz_strbuf_appendf(args, "%s%s%s, ", type_str,
+					tmp_len && type_str[tmp_len - 1] == '*' ? "" : " ",
+					var->name);
+
+				var->type = type_str;
+				rz_list_append(variables, var);
 				argNumber++;
 			} else { /* DW_TAG_variable */
 				var->kind = RZ_ANALYSIS_VAR_KIND_VARIABLE;
-				if (name && type) {
-					var->name = strdup(name);
-					var->type = type_as_string(ctx->analysis->typedb, type);
-					rz_list_append(variables, var);
-				} else {
-					variable_free(var);
+				if (!name || !type) {
+					rz_type_free(type);
 				}
+				var->name = strdup(name);
+				var->type = type_as_string(ctx->analysis->typedb, type);
+				rz_list_append(variables, var);
 			}
+		fail_inner:
 			rz_type_free(type);
 		} else if (child_depth == 1 && child->tag == DW_TAG_unspecified_parameters) {
 			rz_strbuf_appendf(args, "va_args ...,");
