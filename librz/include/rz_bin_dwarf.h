@@ -746,6 +746,8 @@ typedef struct {
 	bool is_64bit;
 } RzBinDwarfCompUnitHdr;
 
+struct rz_bin_dwarf_comp_unit_t;
+
 typedef struct {
 	ut64 tag;
 	ut64 abbrev_code;
@@ -754,9 +756,10 @@ typedef struct {
 	ut64 offset; // important for parsing types
 	bool has_children; // important for parsing types
 	RzBinDwarfAttrValue *attr_values;
+	struct rz_bin_dwarf_comp_unit_t *unit;
 } RzBinDwarfDie;
 
-typedef struct {
+typedef struct rz_bin_dwarf_comp_unit_t {
 	RzBinDwarfCompUnitHdr hdr;
 	ut64 offset;
 	size_t count;

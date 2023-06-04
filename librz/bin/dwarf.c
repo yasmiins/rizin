@@ -24,6 +24,27 @@
 	(((buf) + sizeof(ut64) < buf_end) ? rz_read_ble64(buf, big_endian) : 0); \
 	(buf) += sizeof(ut64)
 
+#define try_u128(out, false_label) \
+	do { \
+		ut64 out_tmp = 0; \
+		ut64 len_tmp = read_u64_leb128(buf, buf_end, &out_tmp); \
+		if (!len_tmp) { \
+			goto false_label; \
+		} \
+		buf += len_tmp; \
+		(out) = out_tmp; \
+	} while (0)
+#define try_s128(out, false_label) \
+	do { \
+		st64 out_tmp = 0; \
+		st64 len_tmp = read_i64_leb128(buf, buf_end, &out_tmp); \
+		if (!len_tmp) { \
+			goto false_label; \
+		} \
+		buf += len_tmp; \
+		(out) = out_tmp; \
+	} while (0)
+
 static const char *dwarf_tag_name_encodings[] = {
 	[DW_TAG_null_entry] = "DW_TAG_null_entry",
 	[DW_TAG_array_type] = "DW_TAG_array_type",
@@ -1712,27 +1733,25 @@ static const ut8 *parse_die(const ut8 *buf, const ut8 *buf_end, RzBinDwarfDebugI
 	size_t i;
 	const char *comp_dir = NULL;
 	ut64 line_info_offset = UT64_MAX;
-	if (abbrev->count) {
-		for (i = 0; i < abbrev->count - 1 && die->count < die->capacity; i++) {
-			memset(&die->attr_values[i], 0, sizeof(die->attr_values[i]));
 
-			buf = parse_attr_value(buf, buf_end - buf, &abbrev->defs[i],
-				&die->attr_values[i], hdr, debug_str, debug_str_len, big_endian);
+	for (i = 0; i < abbrev->count && die->count < die->capacity; i++) {
+		RzBinDwarfAttrValue *attribute = &die->attr_values[i];
+		memset(attribute, 0, sizeof(RzBinDwarfAttrValue));
 
-			RzBinDwarfAttrValue *attribute = &die->attr_values[i];
+		buf = parse_attr_value(buf, buf_end - buf, &abbrev->defs[i],
+			attribute, hdr, debug_str, debug_str_len, big_endian);
 
-			if (attribute->attr_name == DW_AT_comp_dir && (attribute->attr_form == DW_FORM_strp || attribute->attr_form == DW_FORM_string) && attribute->string.content) {
-				comp_dir = attribute->string.content;
-			}
-			if (attribute->attr_name == DW_AT_stmt_list) {
-				if (attribute->kind == DW_AT_KIND_CONSTANT) {
-					line_info_offset = attribute->uconstant;
-				} else if (attribute->kind == DW_AT_KIND_REFERENCE) {
-					line_info_offset = attribute->reference;
-				}
-			}
-			die->count++;
+		if (attribute->attr_name == DW_AT_comp_dir && (attribute->attr_form == DW_FORM_strp || attribute->attr_form == DW_FORM_string) && attribute->string.content) {
+			comp_dir = attribute->string.content;
 		}
+		if (attribute->attr_name == DW_AT_stmt_list) {
+			if (attribute->kind == DW_AT_KIND_CONSTANT) {
+				line_info_offset = attribute->uconstant;
+			} else if (attribute->kind == DW_AT_KIND_REFERENCE) {
+				line_info_offset = attribute->reference;
+			}
+		}
+		die->count++;
 	}
 
 	// If this is a compilation unit dir attribute, we want to cache it so the line info parsing
@@ -1776,14 +1795,11 @@ static const ut8 *parse_comp_unit(RzBinDwarfDebugInfo *info, const ut8 *buf_star
 		// add header size to the offset;
 		die->offset = buf - buf_start + unit->hdr.header_size + unit->offset;
 		die->offset += unit->hdr.is_64bit ? 12 : 4;
+		die->unit = unit;
 
 		// DIE starts with ULEB128 with the abbreviation code
 		ut64 abbr_code;
-		buf = rz_uleb128(buf, buf_end - buf, &abbr_code, NULL);
-
-		if (abbr_code > abbrevs->count || !buf) { // something invalid
-			return NULL;
-		}
+		try_u128(abbr_code, beach);
 
 		if (buf >= buf_end) {
 			unit->count++; // we wanna store this entry too, usually the last one is null_entry
@@ -1794,27 +1810,30 @@ static const ut8 *parse_comp_unit(RzBinDwarfDebugInfo *info, const ut8 *buf_star
 			unit->count++;
 			continue;
 		}
-		ut64 abbr_idx = first_abbr_idx + abbr_code;
 
-		if (abbrevs->count < abbr_idx) {
+		ut64 abbr_idx = first_abbr_idx + abbr_code - 1;
+		if (abbr_idx >= abbrevs->count) {
 			return NULL;
 		}
-		RzBinDwarfAbbrevDecl *abbrev = &abbrevs->decls[abbr_idx - 1];
+		RzBinDwarfAbbrevDecl *abbrev = &abbrevs->decls[abbr_idx];
 
 		if (init_die(die, abbr_code, abbrev->count)) {
 			return NULL; // error
 		}
-		die->tag = abbrev->tag;
-		die->has_children = abbrev->has_children;
-
-		buf = parse_die(buf, buf_end, info, abbrev, &unit->hdr, die, debug_str, debug_str_len, big_endian);
-		if (!buf) {
-			return NULL;
+		if (abbrev->code != 0) {
+			die->tag = abbrev->tag;
+			die->has_children = abbrev->has_children;
+			buf = parse_die(buf, buf_end, info, abbrev, &unit->hdr, die, debug_str, debug_str_len, big_endian);
+			if (!buf) {
+				return NULL;
+			}
 		}
 
 		unit->count++;
 	}
 	return buf;
+beach:
+	return NULL;
 }
 
 /**
@@ -1960,63 +1979,66 @@ cleanup:
 
 static RzBinDwarfDebugAbbrev *parse_abbrev_raw(const ut8 *obuf, size_t len) {
 	const ut8 *buf = obuf, *buf_end = obuf + len;
-	ut64 tmp, attr_code, attr_form, offset;
-	st64 special;
-	ut8 has_children;
-	RzBinDwarfAbbrevDecl *tmpdecl;
-
 	// XXX - Set a suitable value here.
 	if (!obuf || len < 3) {
 		return NULL;
 	}
 	RzBinDwarfDebugAbbrev *da = RZ_NEW0(RzBinDwarfDebugAbbrev);
-
 	init_debug_abbrev(da);
 
 	while (buf && buf + 1 < buf_end) {
-		offset = buf - obuf;
-		buf = rz_uleb128(buf, (size_t)(buf_end - buf), &tmp, NULL);
-		if (!buf || !tmp || buf >= buf_end) {
-			continue;
-		}
 		if (da->count == da->capacity) {
 			expand_debug_abbrev(da);
 		}
-		tmpdecl = &da->decls[da->count];
-		init_abbrev_decl(tmpdecl);
-
-		tmpdecl->code = tmp;
-		buf = rz_uleb128(buf, (size_t)(buf_end - buf), &tmp, NULL);
-		tmpdecl->tag = tmp;
-
-		tmpdecl->offset = offset;
-		if (buf >= buf_end) {
-			break;
+		RzBinDwarfAbbrevDecl *decl = &da->decls[da->count];
+		init_abbrev_decl(decl);
+		decl->offset = buf - obuf;
+		try_u128(decl->code, beach);
+		if (decl->code == 0) {
+			continue;
 		}
-		has_children = READ8(buf);
-		tmpdecl->has_children = has_children;
-		do {
-			if (tmpdecl->count == tmpdecl->capacity) {
-				expand_abbrev_decl(tmpdecl);
-			}
-			buf = rz_uleb128(buf, (size_t)(buf_end - buf), &attr_code, NULL);
-			if (buf >= buf_end) {
-				break;
-			}
-			buf = rz_uleb128(buf, (size_t)(buf_end - buf), &attr_form, NULL);
-			// http://www.dwarfstd.org/doc/DWARF5.pdf#page=225
-			if (attr_form == DW_FORM_implicit_const) {
-				buf = rz_leb128(buf, (size_t)(buf_end - buf), &special);
-				tmpdecl->defs[tmpdecl->count].special = special;
-			}
-			tmpdecl->defs[tmpdecl->count].attr_name = attr_code;
-			tmpdecl->defs[tmpdecl->count].attr_form = attr_form;
-			tmpdecl->count++;
-		} while (attr_code && attr_form);
 
+		try_u128(decl->tag, beach);
+		decl->has_children = READ8(buf);
+		assert(decl->has_children == DW_CHILDREN_yes || decl->has_children == DW_CHILDREN_no);
+
+		RzBinDwarfAttrDef *def = NULL;
+		do {
+			if (decl->count == decl->capacity) {
+				expand_abbrev_decl(decl);
+			}
+			def = &decl->defs[decl->count];
+			try_u128(def->attr_name, beach);
+			if (def->attr_name == 0) {
+				st64 form = 0;
+				try_u128(form, beach);
+				if (form == 0) {
+					goto abbrev_parsed;
+				}
+				goto beach;
+			}
+
+			try_u128(def->attr_form, beach);
+			/**
+			 * http://www.dwarfstd.org/doc/DWARF5.pdf#page=225
+			 *
+			 * The attribute form DW_FORM_implicit_const is another special case. For
+			 * attributes with this form, the attribute specification contains a third part, which is
+			 * a signed LEB128 number. The value of this number is used as the value of the
+			 * attribute, and no value is stored in the .debug_info section.
+			 */
+			if (def->attr_form == DW_FORM_implicit_const) {
+				try_s128(def->special, beach);
+			}
+			decl->count++;
+		} while (true);
+	abbrev_parsed:
 		da->count++;
 	}
 	return da;
+beach:
+	rz_bin_dwarf_debug_abbrev_free(da);
+	return NULL;
 }
 
 static RzBinSection *getsection(RzBinFile *binfile, const char *sn) {
@@ -2084,16 +2106,15 @@ RZ_API RzBinDwarfDebugInfo *rz_bin_dwarf_parse_info(RzBinFile *binfile, RzBinDwa
 		goto cave_buf;
 	}
 	// build hashtable after whole parsing because of possible relocations
-	if (info) {
-		size_t i, j;
-		for (i = 0; i < info->count; i++) {
-			RzBinDwarfCompUnit *unit = &info->comp_units[i];
-			for (j = 0; j < unit->count; j++) {
-				RzBinDwarfDie *die = &unit->dies[j];
-				ht_up_insert(info->lookup_table, die->offset, die); // optimization for further processing}
-			}
+	size_t i, j;
+	for (i = 0; i < info->count; i++) {
+		RzBinDwarfCompUnit *unit = &info->comp_units[i];
+		for (j = 0; j < unit->count; j++) {
+			RzBinDwarfDie *die = &unit->dies[j];
+			ht_up_insert(info->lookup_table, die->offset, die); // optimization for further processing}
 		}
 	}
+
 cave_buf:
 	free(buf);
 cave_debug_str_buf:

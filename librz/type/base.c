@@ -147,7 +147,6 @@ RZ_API void rz_type_base_type_free(RzBaseType *type) {
 		break;
 	case RZ_BASE_TYPE_KIND_TYPEDEF:
 	case RZ_BASE_TYPE_KIND_ATOMIC:
-		break;
 	default:
 		break;
 	}

@@ -115,31 +115,11 @@ RZ_API ut8 *rz_uleb128_encode(const ut64 s, int *len) {
 }
 
 RZ_API const ut8 *rz_leb128(const ut8 *data, int datalen, st64 *v) {
-	ut8 c = 0;
-	st64 s = 0, sum = 0;
-	const ut8 *data_end = data + datalen;
-	if (data && datalen > 0) {
-		if (!*data) {
-			data++;
-			goto beach;
-		}
-		while (data < data_end) {
-			c = *(data++) & 0x0ff;
-			sum |= ((st64)(c & 0x7f) << s);
-			s += 7;
-			if (!(c & 0x80)) {
-				break;
-			}
-		}
+	size_t len = read_i64_leb128(data, data + datalen, v);
+	if (len == 0) {
+		RZ_LOG_ERROR("failed read leb128");
 	}
-	if ((s < (8 * sizeof(sum))) && (c & 0x40)) {
-		sum |= -((st64)1 << s);
-	}
-beach:
-	if (v) {
-		*v = sum;
-	}
-	return data;
+	return data + len;
 }
 
 RZ_API st64 rz_sleb128(const ut8 **data, const ut8 *end) {
