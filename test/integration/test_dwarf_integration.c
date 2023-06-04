@@ -10,8 +10,9 @@
 
 #define check_kv(k, v) \
 	do { \
-		value = sdb_get(sdb, k, NULL); \
+		char *value = sdb_get(sdb, k, NULL); \
 		mu_assert_nullable_streq(value, v, "Wrong key - value pair"); \
+		free(value); \
 	} while (0)
 
 static bool test_parse_dwarf_types(void) {
@@ -169,7 +170,6 @@ static bool test_dwarf_function_parsing_cpp(void) {
 
 	Sdb *sdb = sdb_ns(analysis->sdb, "dwarf", 0);
 	mu_assert_notnull(sdb, "No dwarf function information in db");
-	char *value = NULL;
 	check_kv("Mammal", "fcn");
 	check_kv("fcn.Mammal.addr", "0x401300");
 	check_kv("fcn.Mammal.sig", "void Mammal(struct Mammal *this);");
@@ -233,7 +233,6 @@ static bool test_dwarf_function_parsing_go(void) {
 
 	Sdb *sdb = sdb_ns(analysis->sdb, "dwarf", 0);
 	mu_assert_notnull(sdb, "No dwarf function information in db");
-	char *value = NULL;
 
 	check_kv("main_main", "fcn");
 	check_kv("fcn.main_main.name", "main.main");
@@ -295,7 +294,6 @@ static bool test_dwarf_function_parsing_rust(void) {
 
 	Sdb *sdb = sdb_ns(analysis->sdb, "dwarf", 0);
 	mu_assert_notnull(sdb, "No dwarf function information in db");
-	char *value = NULL;
 
 	check_kv("fcn.main.addr", "0x5750");
 	check_kv("fcn.main.name", "main");
