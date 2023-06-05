@@ -863,36 +863,37 @@ static bool type_decl_as_pretty_string(const RzTypeDB *typedb, const RzType *typ
 		} else if (!btype || btype->kind == RZ_BASE_TYPE_KIND_ATOMIC) {
 			rz_strbuf_appendf(phbuf.typename, "%s%s", type->identifier.is_const ? "const " : "", type->identifier.name);
 		} else {
+			const char *name = btype->name;
 			switch (btype->kind) {
 			case RZ_BASE_TYPE_KIND_STRUCT:
 				rz_strbuf_appendf(phbuf.typename, "%sstruct", type->identifier.is_const ? "const " : "");
 				if (!is_anon || print_anon) {
-					rz_strbuf_appendf(phbuf.typename, " %s", btype->name);
+					rz_strbuf_appendf(phbuf.typename, " %s", name);
 				}
 				break;
 			case RZ_BASE_TYPE_KIND_UNION:
 				rz_strbuf_appendf(phbuf.typename, "%sunion", type->identifier.is_const ? "const " : "");
 				if (!is_anon || print_anon) {
-					rz_strbuf_appendf(phbuf.typename, " %s", btype->name);
+					rz_strbuf_appendf(phbuf.typename, " %s", name);
 				}
 				break;
 			case RZ_BASE_TYPE_KIND_ENUM:
 				rz_strbuf_appendf(phbuf.typename, "%senum", type->identifier.is_const ? "const " : "");
 				if (!is_anon || print_anon) {
-					rz_strbuf_appendf(phbuf.typename, " %s", btype->name);
+					rz_strbuf_appendf(phbuf.typename, " %s", name);
 				}
 				break;
 			case RZ_BASE_TYPE_KIND_TYPEDEF: {
 				if (show_typedefs) {
 					char *typestr = rz_type_as_string(typedb, btype->type);
 					if (!typestr) {
-						RZ_LOG_ERROR("Failed to get type representation of typedef of base type: %s\n", btype->name);
+						RZ_LOG_ERROR("Failed to get type representation of typedef of base type: %s\n", name);
 						return false;
 					}
 					rz_strbuf_appendf(phbuf.typename, "typedef %s", typestr);
 					free(typestr);
 				} else {
-					rz_strbuf_append(phbuf.typename, btype->name);
+					rz_strbuf_append(phbuf.typename, name);
 				}
 				break;
 			}

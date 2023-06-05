@@ -234,6 +234,11 @@ static RzType *parse_type(Context *ctx, const ut64 offset, RZ_NULLABLE ut64 *siz
 		if (!name) {
 			goto end;
 		}
+		if (RZ_STR_ISEMPTY(name)) {
+			free(name);
+			goto end;
+		}
+
 		ret = RZ_NEW0(RzType);
 		if (!ret) {
 			free(name);
@@ -484,6 +489,10 @@ static void parse_structure_type(Context *ctx, const RzBinDwarfDie *die) {
 		}
 	}
 
+	if (!base_type->name) {
+		goto fail;
+	}
+
 	base_type->size = get_die_size(die);
 	RzTypeStructMember member = { 0 };
 	// Parse out all members, can this in someway be extracted to a function?
@@ -503,6 +512,7 @@ static void parse_structure_type(Context *ctx, const RzBinDwarfDie *die) {
 	}
 	foreach_children_end(child);
 	rz_type_db_save_base_type(ctx->analysis->typedb, base_type);
+	return;
 fail:
 	rz_type_base_type_free(base_type);
 }
@@ -683,12 +693,7 @@ static RzType *get_spec_die_type(Context *ctx, RzBinDwarfDie *die) {
 /* For some languages linkage name is more informative like C++,
    but for Rust it's rubbish and the normal name is fine */
 static bool prefer_linkage_name(char *lang) {
-	if (!lang) {
-		return false;
-	}
-	if (!strcmp(lang, "rust")) {
-		return false;
-	} else if (!strcmp(lang, "ada")) {
+	if (!!lang || !strcmp(lang, "rust") || !strcmp(lang, "ada")) {
 		return false;
 	}
 	return true;
@@ -1263,7 +1268,7 @@ static st32 parse_function_args_and_vars(Context *ctx, const RzBinDwarfDie *die,
 			} else { /* DW_TAG_variable */
 				var->kind = RZ_ANALYSIS_VAR_KIND_VARIABLE;
 				if (!name || !type) {
-					rz_type_free(type);
+					goto fail_inner;
 				}
 				var->name = strdup(name);
 				var->type = type_as_string(ctx->analysis->typedb, type);
