@@ -62,8 +62,10 @@ bool test_dwarf3_c(void) {
 	mu_assert_notnull(bf, "couldn't open file");
 
 	RzBinDwarfDebugAbbrev *da = rz_bin_dwarf_abbrev_parse(bin->cur);
+	mu_assert_notnull(da, "abbrev parse");
 	mu_assert_eq(rz_bin_dwarf_abbrev_count(da), 7, "Incorrect number of abbreviation");
 	RzBinDwarfDebugInfo *info = rz_bin_dwarf_info_parse(bin->cur, da);
+	mu_assert_notnull(info, "debuginfo parse");
 	mu_assert_eq(info->count, 1, "Incorrect number of info compilation units");
 
 	// check header
