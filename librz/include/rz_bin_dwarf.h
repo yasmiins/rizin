@@ -791,17 +791,14 @@ typedef struct {
 	ut64 tag;
 	ut64 offset;
 	ut8 has_children;
-	size_t count;
-	size_t capacity;
-	RzBinDwarfAttrDef *defs;
+	RzPVector /*RzBinDwarfAttrDef**/ defs;
 } RzBinDwarfAbbrevDecl;
 
 #define DEBUG_ABBREV_CAP 32
 
 typedef struct {
-	size_t count;
-	size_t capacity;
-	RzBinDwarfAbbrevDecl *decls;
+	RzPVector /*RzBinDwarfAbbrevDecl**/ decls;
+	HtUP /*size_t,RzBinDwarfAbbrevDecl**/ *tbl;
 } RzBinDwarfDebugAbbrev;
 
 #define DWARF_FALSE 0
@@ -958,6 +955,11 @@ RZ_API void rz_bin_dwarf_arange_set_free(RzBinDwarfARangeSet *set);
 RZ_API void rz_bin_dwarf_loc_free(HtUP /*<offset, RzBinDwarfLocList *>*/ *loc_table);
 RZ_API void rz_bin_dwarf_debug_info_free(RzBinDwarfDebugInfo *inf);
 RZ_API void rz_bin_dwarf_debug_abbrev_free(RzBinDwarfDebugAbbrev *da);
+RZ_API size_t rz_bin_dwarf_debug_abbrev_count(RZ_NONNULL const RzBinDwarfDebugAbbrev *da);
+RZ_API RzBinDwarfAbbrevDecl *rz_bin_dwarf_debug_abbrev_get(RZ_NONNULL const RzBinDwarfDebugAbbrev *da, size_t idx);
+RZ_API RzBinDwarfAbbrevDecl *rz_bin_dwarf_debug_abbrev_by_offet(RZ_NONNULL const RzBinDwarfDebugAbbrev *da, size_t offset);
+RZ_API size_t rz_bin_dwarf_abbrev_decl_count(RZ_NONNULL const RzBinDwarfAbbrevDecl *decl);
+RZ_API RzBinDwarfAttrDef *rz_bin_dwarf_abbrev_decl_get(RZ_NONNULL const RzBinDwarfAbbrevDecl *decl, size_t idx);
 
 /**
  * \brief Opaque cache for fully resolved filenames during Dwarf Line Info Generation

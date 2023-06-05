@@ -400,19 +400,6 @@ RZ_API const char *rz_bin_dwarf_get_lang_name(ut64 lang) {
 	return dwarf_langs[lang];
 }
 
-static int abbrev_cmp(const void *a, const void *b) {
-	const RzBinDwarfAbbrevDecl *first = a;
-	const RzBinDwarfAbbrevDecl *second = b;
-
-	if (first->offset > second->offset) {
-		return 1;
-	} else if (first->offset < second->offset) {
-		return -1;
-	} else {
-		return 0;
-	}
-}
-
 /**
  * \brief Read an "initial length" value, as specified by dwarf.
  * This also determines whether it is 64bit or 32bit and reads 4 or 12 bytes respectively.
@@ -1275,38 +1262,7 @@ static int init_abbrev_decl(RzBinDwarfAbbrevDecl *ad) {
 	if (!ad) {
 		return -EINVAL;
 	}
-	ad->defs = calloc(sizeof(RzBinDwarfAttrDef), ABBREV_DECL_CAP);
-
-	if (!ad->defs) {
-		return -ENOMEM;
-	}
-
-	ad->capacity = ABBREV_DECL_CAP;
-	ad->count = 0;
-
-	return 0;
-}
-
-static int expand_abbrev_decl(RzBinDwarfAbbrevDecl *ad) {
-	RzBinDwarfAttrDef *tmp;
-
-	if (!ad || !ad->capacity || ad->capacity != ad->count) {
-		return -EINVAL;
-	}
-
-	tmp = (RzBinDwarfAttrDef *)realloc(ad->defs,
-		ad->capacity * 2 * sizeof(RzBinDwarfAttrDef));
-
-	if (!tmp) {
-		return -ENOMEM;
-	}
-
-	// Set the area in the buffer past the length to 0
-	memset((ut8 *)tmp + ad->capacity * sizeof(RzBinDwarfAttrDef),
-		0, ad->capacity * sizeof(RzBinDwarfAttrDef));
-	ad->defs = tmp;
-	ad->capacity *= 2;
-
+	rz_pvector_init(&ad->defs, NULL);
 	return 0;
 }
 
@@ -1314,48 +1270,46 @@ static int init_debug_abbrev(RzBinDwarfDebugAbbrev *da) {
 	if (!da) {
 		return -EINVAL;
 	}
-	da->decls = calloc(sizeof(RzBinDwarfAbbrevDecl), DEBUG_ABBREV_CAP);
-	if (!da->decls) {
-		return -ENOMEM;
-	}
-	da->capacity = DEBUG_ABBREV_CAP;
-	da->count = 0;
-
-	return 0;
-}
-
-static int expand_debug_abbrev(RzBinDwarfDebugAbbrev *da) {
-	RzBinDwarfAbbrevDecl *tmp;
-
-	if (!da || da->capacity == 0 || da->capacity != da->count) {
+	rz_pvector_init(&da->decls, NULL);
+	da->tbl = ht_up_new(NULL, NULL, NULL);
+	if (!da) {
+		free(da);
 		return -EINVAL;
 	}
-
-	tmp = (RzBinDwarfAbbrevDecl *)realloc(da->decls,
-		da->capacity * 2 * sizeof(RzBinDwarfAbbrevDecl));
-
-	if (!tmp) {
-		return -ENOMEM;
-	}
-	memset((ut8 *)tmp + da->capacity * sizeof(RzBinDwarfAbbrevDecl),
-		0, da->capacity * sizeof(RzBinDwarfAbbrevDecl));
-
-	da->decls = tmp;
-	da->capacity *= 2;
-
 	return 0;
 }
 
 RZ_API void rz_bin_dwarf_debug_abbrev_free(RzBinDwarfDebugAbbrev *da) {
-	size_t i;
 	if (!da) {
 		return;
 	}
-	for (i = 0; i < da->count; i++) {
-		RZ_FREE(da->decls[i].defs);
-	}
-	RZ_FREE(da->decls);
+	rz_pvector_fini(&da->decls);
 	free(da);
+}
+
+RZ_API size_t rz_bin_dwarf_debug_abbrev_count(RZ_NONNULL const RzBinDwarfDebugAbbrev *da) {
+	rz_return_val_if_fail(da, 0);
+	return rz_pvector_len(&da->decls);
+}
+
+RZ_API RzBinDwarfAbbrevDecl *rz_bin_dwarf_debug_abbrev_get(RZ_NONNULL const RzBinDwarfDebugAbbrev *da, size_t idx) {
+	rz_return_val_if_fail(da, NULL);
+	return rz_pvector_at(&da->decls, idx);
+}
+
+RZ_API RzBinDwarfAbbrevDecl *rz_bin_dwarf_debug_abbrev_by_offet(RZ_NONNULL const RzBinDwarfDebugAbbrev *da, size_t offset) {
+	rz_return_val_if_fail(da, NULL);
+	return ht_up_find(da->tbl, offset, NULL);
+}
+
+RZ_API size_t rz_bin_dwarf_abbrev_decl_count(RZ_NONNULL const RzBinDwarfAbbrevDecl *decl) {
+	rz_return_val_if_fail(decl, 0);
+	return rz_pvector_len(&decl->defs);
+}
+
+RZ_API RzBinDwarfAttrDef *rz_bin_dwarf_abbrev_decl_get(RZ_NONNULL const RzBinDwarfAbbrevDecl *decl, size_t idx) {
+	rz_return_val_if_fail(decl, NULL);
+	return rz_pvector_at(&decl->defs, idx);
 }
 
 RZ_API void rz_bin_dwarf_line_info_free(RzBinDwarfLineInfo *li) {
@@ -1734,12 +1688,12 @@ static const ut8 *parse_die(const ut8 *buf, const ut8 *buf_end, RzBinDwarfDebugI
 	const char *comp_dir = NULL;
 	ut64 line_info_offset = UT64_MAX;
 
-	for (i = 0; i < abbrev->count && die->count < die->capacity; i++) {
+	for (i = 0; i < rz_pvector_len(&abbrev->defs) && die->count < die->capacity; i++) {
 		RzBinDwarfAttrValue *attribute = &die->attr_values[i];
 		memset(attribute, 0, sizeof(RzBinDwarfAttrValue));
 
-		buf = parse_attr_value(buf, buf_end - buf, &abbrev->defs[i],
-			attribute, hdr, debug_str, debug_str_len, big_endian);
+		RzBinDwarfAttrDef *def = rz_bin_dwarf_abbrev_decl_get(abbrev, i);
+		buf = parse_attr_value(buf, buf_end - buf, def, attribute, hdr, debug_str, debug_str_len, big_endian);
 
 		if (attribute->attr_name == DW_AT_comp_dir && (attribute->attr_form == DW_FORM_strp || attribute->attr_form == DW_FORM_string) && attribute->string.content) {
 			comp_dir = attribute->string.content;
@@ -1812,12 +1766,12 @@ static const ut8 *parse_comp_unit(RzBinDwarfDebugInfo *info, const ut8 *buf_star
 		}
 
 		ut64 abbr_idx = first_abbr_idx + abbr_code - 1;
-		if (abbr_idx >= abbrevs->count) {
+		if (abbr_idx > rz_bin_dwarf_debug_abbrev_count(abbrevs)) {
 			return NULL;
 		}
-		RzBinDwarfAbbrevDecl *abbrev = &abbrevs->decls[abbr_idx];
+		RzBinDwarfAbbrevDecl *abbrev = rz_bin_dwarf_debug_abbrev_get(abbrevs, abbr_idx);
 
-		if (init_die(die, abbr_code, abbrev->count)) {
+		if (init_die(die, abbr_code, rz_pvector_len(&abbrevs->decls))) {
 			return NULL; // error
 		}
 		if (abbrev->code != 0) {
@@ -1943,30 +1897,28 @@ static RzBinDwarfDebugInfo *parse_info_raw(RzBinDwarfDebugAbbrev *da,
 			goto cleanup;
 		}
 
-		if (da->decls->count >= da->capacity) {
+		RzBinDwarfAbbrevDecl *decl_head = rz_pvector_head(&da->decls);
+		size_t count = rz_bin_dwarf_debug_abbrev_count(da);
+		if (rz_bin_dwarf_abbrev_decl_count(decl_head) >= count) {
 			RZ_LOG_WARN("malformed dwarf have not enough buckets for decls.\n");
 		}
-		rz_warn_if_fail(da->count <= da->capacity);
 
 		// find abbrev start for current comp unit
 		// we could also do naive, ((char *)da->decls) + abbrev_offset,
 		// but this is more bulletproof to invalid DWARF
-		RzBinDwarfAbbrevDecl key = { .offset = unit->hdr.abbrev_offset };
-		RzBinDwarfAbbrevDecl *abbrev_start = bsearch(&key, da->decls, da->count, sizeof(key), abbrev_cmp);
+		RzBinDwarfAbbrevDecl *abbrev_start = rz_bin_dwarf_debug_abbrev_by_offet(da, unit->hdr.abbrev_offset);
 		if (!abbrev_start) {
 			goto cleanup;
 		}
+
 		// They point to the same array object, so should be def. behaviour
-		size_t first_abbr_idx = abbrev_start - da->decls;
-
+		size_t first_abbr_idx = rz_pvector_contains(&da->decls, abbrev_start) - rz_pvector_data(&da->decls);
 		buf = parse_comp_unit(info, buf, buf_end - buf, unit, da, first_abbr_idx, debug_str, debug_str_len, big_endian);
-
 		if (!buf) {
 			goto cleanup;
 		}
 
 		info->n_dwarf_dies += unit->count;
-
 		unit_idx++;
 	}
 
@@ -1977,20 +1929,26 @@ cleanup:
 	return NULL;
 }
 
+#define NEW0_OR_BEACH(val, typ) \
+	val = RZ_NEW0(typ); \
+	if (!da) { \
+		goto beach; \
+	}
+
 static RzBinDwarfDebugAbbrev *parse_abbrev_raw(const ut8 *obuf, size_t len) {
 	const ut8 *buf = obuf, *buf_end = obuf + len;
 	// XXX - Set a suitable value here.
 	if (!obuf || len < 3) {
 		return NULL;
 	}
-	RzBinDwarfDebugAbbrev *da = RZ_NEW0(RzBinDwarfDebugAbbrev);
+	RzBinDwarfDebugAbbrev *da = NULL;
+	RzBinDwarfAbbrevDecl *decl = NULL;
+	RzBinDwarfAttrDef *def = NULL;
+	NEW0_OR_BEACH(da, RzBinDwarfDebugAbbrev);
 	init_debug_abbrev(da);
 
 	while (buf && buf + 1 < buf_end) {
-		if (da->count == da->capacity) {
-			expand_debug_abbrev(da);
-		}
-		RzBinDwarfAbbrevDecl *decl = &da->decls[da->count];
+		NEW0_OR_BEACH(decl, RzBinDwarfAbbrevDecl);
 		init_abbrev_decl(decl);
 		decl->offset = buf - obuf;
 		try_u128(decl->code, beach);
@@ -2002,12 +1960,8 @@ static RzBinDwarfDebugAbbrev *parse_abbrev_raw(const ut8 *obuf, size_t len) {
 		decl->has_children = READ8(buf);
 		assert(decl->has_children == DW_CHILDREN_yes || decl->has_children == DW_CHILDREN_no);
 
-		RzBinDwarfAttrDef *def = NULL;
 		do {
-			if (decl->count == decl->capacity) {
-				expand_abbrev_decl(decl);
-			}
-			def = &decl->defs[decl->count];
+			NEW0_OR_BEACH(def, RzBinDwarfAttrDef);
 			try_u128(def->attr_name, beach);
 			if (def->attr_name == 0) {
 				st64 form = 0;
@@ -2030,10 +1984,11 @@ static RzBinDwarfDebugAbbrev *parse_abbrev_raw(const ut8 *obuf, size_t len) {
 			if (def->attr_form == DW_FORM_implicit_const) {
 				try_s128(def->special, beach);
 			}
-			decl->count++;
+			rz_pvector_push(&decl->defs, def);
 		} while (true);
 	abbrev_parsed:
-		da->count++;
+		rz_pvector_push(&da->decls, decl);
+		ht_up_insert(da->tbl, decl->offset, decl);
 	}
 	return da;
 beach:

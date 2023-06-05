@@ -62,7 +62,7 @@ bool test_dwarf3_c(void) {
 	mu_assert_notnull(bf, "couldn't open file");
 
 	RzBinDwarfDebugAbbrev *da = rz_bin_dwarf_parse_abbrev(bin->cur);
-	mu_assert_eq(da->count, 7, "Incorrect number of abbreviation");
+	mu_assert_eq(rz_bin_dwarf_debug_abbrev_count(da), 7, "Incorrect number of abbreviation");
 	RzBinDwarfDebugInfo *info = rz_bin_dwarf_parse_info(bin->cur, da);
 	mu_assert_eq(info->count, 1, "Incorrect number of info compilation units");
 
@@ -126,7 +126,7 @@ bool test_dwarf4_cpp_multiple_modules(void) {
 	mu_assert_notnull(bf, "couldn't open file");
 
 	RzBinDwarfDebugAbbrev *da = rz_bin_dwarf_parse_abbrev(bin->cur);
-	mu_assert_eq(da->count, 37, "Incorrect number of abbreviation");
+	mu_assert_eq(rz_bin_dwarf_debug_abbrev_count(da), 37, "Incorrect number of abbreviation");
 	RzBinDwarfDebugInfo *info = rz_bin_dwarf_parse_info(bin->cur, da);
 	mu_assert_notnull(info, "Failed parsing of debug_info");
 	mu_assert_eq(info->count, 2, "Incorrect number of info compilation units");
@@ -337,7 +337,7 @@ bool test_dwarf2_big_endian(void) {
 	mu_assert_notnull(bf, "couldn't open file");
 
 	RzBinDwarfDebugAbbrev *da = rz_bin_dwarf_parse_abbrev(bin->cur);
-	mu_assert_eq(da->count, 108, "Incorrect number of abbreviation");
+	mu_assert_eq(rz_bin_dwarf_debug_abbrev_count(da), 108, "Incorrect number of abbreviation");
 	RzBinDwarfDebugInfo *info = rz_bin_dwarf_parse_info(bin->cur, da);
 	mu_assert_notnull(info, "Failed parsing of debug_info");
 	mu_assert_eq(info->count, 1, "Incorrect number of info compilation units");
