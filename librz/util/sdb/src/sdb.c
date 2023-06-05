@@ -204,7 +204,10 @@ static void sdb_fini(Sdb *s, int donull) {
 }
 
 RZ_API bool sdb_free(Sdb *s) {
-	if (s && s->ht && s->refs) {
+	if (!s) {
+		return false;
+	}
+	if (s->ht && s->refs) {
 		s->refs--;
 		if (s->refs < 1) {
 			s->refs = 0;

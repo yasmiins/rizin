@@ -746,8 +746,6 @@ typedef struct {
 	bool is_64bit;
 } RzBinDwarfCompUnitHdr;
 
-struct rz_bin_dwarf_comp_unit_t;
-
 typedef struct {
 	ut64 tag;
 	ut64 abbrev_code;
@@ -756,7 +754,7 @@ typedef struct {
 	ut64 offset; // important for parsing types
 	bool has_children; // important for parsing types
 	RzBinDwarfAttrValue *attr_values;
-	struct rz_bin_dwarf_comp_unit_t *unit;
+	size_t unit_offet;
 } RzBinDwarfDie;
 
 typedef struct rz_bin_dwarf_comp_unit_t {
@@ -773,7 +771,8 @@ typedef struct {
 	size_t count;
 	size_t capacity;
 	RzBinDwarfCompUnit *comp_units;
-	HtUP /*<ut64 offset, DwarfDie *die>*/ *lookup_table;
+	HtUP /*<ut64 offset, DwarfDie *die>*/ *die_tbl;
+	HtUP /*<ut64 offset, RzBinDwarfCompUnit *>*/ *unit_tbl;
 	size_t n_dwarf_dies;
 
 	/**
@@ -784,8 +783,6 @@ typedef struct {
 	HtUP /*<ut64, char *>*/ *line_info_offset_comp_dir;
 } RzBinDwarfDebugInfo;
 
-#define ABBREV_DECL_CAP 8
-
 typedef struct {
 	ut64 code;
 	ut64 tag;
@@ -793,8 +790,6 @@ typedef struct {
 	ut8 has_children;
 	RzPVector /*RzBinDwarfAttrDef**/ defs;
 } RzBinDwarfAbbrevDecl;
-
-#define DEBUG_ABBREV_CAP 32
 
 typedef struct {
 	RzPVector /*RzBinDwarfAbbrevDecl**/ decls;

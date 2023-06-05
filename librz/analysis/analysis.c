@@ -165,10 +165,7 @@ RZ_API RzAnalysis *rz_analysis_free(RzAnalysis *a) {
 	rz_list_free(a->leaddrs);
 	rz_type_db_free(a->typedb);
 	sdb_free(a->sdb);
-	if (a->esil) {
-		rz_analysis_esil_free(a->esil);
-		a->esil = NULL;
-	}
+	rz_analysis_esil_free(a->esil);
 	free(a->last_disasm_reg);
 	rz_list_free(a->imports);
 	rz_str_constpool_fini(&a->constpool);

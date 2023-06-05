@@ -11,7 +11,7 @@
 typedef struct dwarf_parse_context_t {
 	const RzAnalysis *analysis;
 	Sdb *sdb;
-	HtUP /*<ut64 offset, DwarfDie *die>*/ *die_map;
+	const RzBinDwarfDebugInfo *debuginfo;
 	HtUP /*<offset, RzBinDwarfLocList*>*/ *locations;
 	char *lang; // for demangling
 } Context;
@@ -127,7 +127,8 @@ static ut64 get_die_size(const RzBinDwarfDie *die) {
 #define foreach_children_begin(child) \
 	if (die->has_children) { \
 		int child_depth = 1; \
-		const RzBinDwarfDie *child_end = die->unit->dies + die->unit->count; \
+		RzBinDwarfCompUnit *unit = ht_up_find(ctx->debuginfo->unit_tbl, die->unit_offet, NULL); \
+		const RzBinDwarfDie *child_end = unit->dies + unit->count; \
 		for (const RzBinDwarfDie *(child) = die + 1; child_depth > 0 && (child) < child_end; (child)++) {
 #define foreach_children_end(child) \
 	if ((child)->has_children) { \
@@ -196,7 +197,7 @@ static RzType *parse_type(Context *ctx, const ut64 offset, RZ_NULLABLE ut64 *siz
 	if (set_u_contains(visited, offset)) {
 		return NULL;
 	}
-	RzBinDwarfDie *die = ht_up_find(ctx->die_map, offset, NULL);
+	RzBinDwarfDie *die = ht_up_find(ctx->debuginfo->die_tbl, offset, NULL);
 	if (!die) {
 		return NULL;
 	}
@@ -478,7 +479,7 @@ static void parse_structure_type(Context *ctx, const RzBinDwarfDie *die) {
 	// if it is definition of previous declaration (TODO Fix, big ugly hotfix addition)
 	st32 spec_attr_idx = find_attr_idx(die, DW_AT_specification);
 	if (spec_attr_idx != -1) {
-		RzBinDwarfDie *decl_die = ht_up_find(ctx->die_map, die->attr_values[spec_attr_idx].reference, NULL);
+		RzBinDwarfDie *decl_die = ht_up_find(ctx->debuginfo->die_tbl, die->attr_values[spec_attr_idx].reference, NULL);
 		if (!decl_die) {
 			goto fail;
 		}
@@ -700,7 +701,7 @@ static bool prefer_linkage_name(char *lang) {
 }
 
 static RzType *parse_abstract_origin(Context *ctx, ut64 offset, const char **name) {
-	RzBinDwarfDie *die = ht_up_find(ctx->die_map, offset, NULL);
+	RzBinDwarfDie *die = ht_up_find(ctx->debuginfo->die_tbl, offset, NULL);
 	if (die) {
 		size_t i;
 		ut64 size = 0;
@@ -723,7 +724,6 @@ static RzType *parse_abstract_origin(Context *ctx, ut64 offset, const char **nam
 				break;
 			case DW_AT_type:
 				return parse_type_outer(ctx, val->reference, &size);
-				break;
 			default:
 				break;
 			}
@@ -1274,7 +1274,10 @@ static st32 parse_function_args_and_vars(Context *ctx, const RzBinDwarfDie *die,
 				var->type = type_as_string(ctx->analysis->typedb, type);
 				rz_list_append(variables, var);
 			}
+			rz_type_free(type);
+			continue;
 		fail_inner:
+			variable_free(var);
 			rz_type_free(type);
 		} else if (child_depth == 1 && child->tag == DW_TAG_unspecified_parameters) {
 			rz_strbuf_appendf(args, "va_args ...,");
@@ -1410,7 +1413,7 @@ static void parse_function(Context *ctx, const RzBinDwarfDie *die) {
 			break;
 		case DW_AT_specification: /* reference to declaration DIE with more info */
 		{
-			RzBinDwarfDie *spec_die = ht_up_find(ctx->die_map, val->reference, NULL);
+			RzBinDwarfDie *spec_die = ht_up_find(ctx->debuginfo->die_tbl, val->reference, NULL);
 			if (spec_die) {
 				fcn.name = get_specification_die_name(spec_die); /* I assume that if specification has a name, this DIE hasn't */
 				rz_type_free(ret_type);
@@ -1593,7 +1596,7 @@ RZ_API void rz_analysis_dwarf_process_info(const RzAnalysis *analysis, RzAnalysi
 	const RzBinDwarfDebugInfo *info = ctx->info;
 	Context dw_context = { // context per unit?
 		.analysis = analysis,
-		.die_map = info->lookup_table,
+		.debuginfo = info,
 		.sdb = dwarf_sdb,
 		.locations = ctx->loc,
 		.lang = NULL

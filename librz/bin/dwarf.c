@@ -1258,19 +1258,34 @@ static int expand_cu(RzBinDwarfCompUnit *cu) {
 	return 0;
 }
 
-static int init_abbrev_decl(RzBinDwarfAbbrevDecl *ad) {
+void abbrev_attr_free(RzBinDwarfAttrDef *def) {
+	if (!def) {
+		return;
+	}
+	free(def);
+}
+
+static int abbrev_decl_init(RzBinDwarfAbbrevDecl *ad) {
 	if (!ad) {
 		return -EINVAL;
 	}
-	rz_pvector_init(&ad->defs, NULL);
+	rz_pvector_init(&ad->defs, (RzPVectorFree)abbrev_attr_free);
 	return 0;
 }
 
-static int init_debug_abbrev(RzBinDwarfDebugAbbrev *da) {
+static void abbrev_decl_free(RzBinDwarfAbbrevDecl *ad) {
+	if (!ad) {
+		return;
+	}
+	rz_pvector_fini(&ad->defs);
+	free(ad);
+}
+
+static int debug_abbrev_init(RzBinDwarfDebugAbbrev *da) {
 	if (!da) {
 		return -EINVAL;
 	}
-	rz_pvector_init(&da->decls, NULL);
+	rz_pvector_init(&da->decls, (RzPVectorFree)abbrev_decl_free);
 	da->tbl = ht_up_new(NULL, NULL, NULL);
 	if (!da) {
 		free(da);
@@ -1284,6 +1299,7 @@ RZ_API void rz_bin_dwarf_debug_abbrev_free(RzBinDwarfDebugAbbrev *da) {
 		return;
 	}
 	rz_pvector_fini(&da->decls);
+	ht_up_free(da->tbl);
 	free(da);
 }
 
@@ -1375,7 +1391,8 @@ RZ_API void rz_bin_dwarf_debug_info_free(RzBinDwarfDebugInfo *inf) {
 		free_comp_unit(&inf->comp_units[i]);
 	}
 	ht_up_free(inf->line_info_offset_comp_dir);
-	ht_up_free(inf->lookup_table);
+	ht_up_free(inf->die_tbl);
+	ht_up_free(inf->unit_tbl);
 	free(inf->comp_units);
 	free(inf);
 }
@@ -1749,7 +1766,7 @@ static const ut8 *parse_comp_unit(RzBinDwarfDebugInfo *info, const ut8 *buf_star
 		// add header size to the offset;
 		die->offset = buf - buf_start + unit->hdr.header_size + unit->offset;
 		die->offset += unit->hdr.is_64bit ? 12 : 4;
-		die->unit = unit;
+		die->unit_offet = unit->offset;
 
 		// DIE starts with ULEB128 with the abbreviation code
 		ut64 abbr_code;
@@ -1945,25 +1962,28 @@ static RzBinDwarfDebugAbbrev *parse_abbrev_raw(const ut8 *obuf, size_t len) {
 	RzBinDwarfAbbrevDecl *decl = NULL;
 	RzBinDwarfAttrDef *def = NULL;
 	NEW0_OR_BEACH(da, RzBinDwarfDebugAbbrev);
-	init_debug_abbrev(da);
+	debug_abbrev_init(da);
 
 	while (buf && buf + 1 < buf_end) {
-		NEW0_OR_BEACH(decl, RzBinDwarfAbbrevDecl);
-		init_abbrev_decl(decl);
-		decl->offset = buf - obuf;
-		try_u128(decl->code, beach);
-		if (decl->code == 0) {
+		ut64 offset = buf - obuf;
+		ut64 code = 0;
+		try_u128(code, beach);
+		if (code == 0) {
 			continue;
 		}
 
+		NEW0_OR_BEACH(decl, RzBinDwarfAbbrevDecl);
+		abbrev_decl_init(decl);
+		decl->offset = offset;
+		decl->code = code;
 		try_u128(decl->tag, beach);
 		decl->has_children = READ8(buf);
 		assert(decl->has_children == DW_CHILDREN_yes || decl->has_children == DW_CHILDREN_no);
 
 		do {
-			NEW0_OR_BEACH(def, RzBinDwarfAttrDef);
-			try_u128(def->attr_name, beach);
-			if (def->attr_name == 0) {
+			ut64 name = 0;
+			try_u128(name, beach);
+			if (name == 0) {
 				st64 form = 0;
 				try_u128(form, beach);
 				if (form == 0) {
@@ -1972,6 +1992,8 @@ static RzBinDwarfDebugAbbrev *parse_abbrev_raw(const ut8 *obuf, size_t len) {
 				goto beach;
 			}
 
+			NEW0_OR_BEACH(def, RzBinDwarfAttrDef);
+			def->attr_name = name;
 			try_u128(def->attr_form, beach);
 			/**
 			 * http://www.dwarfstd.org/doc/DWARF5.pdf#page=225
@@ -1992,6 +2014,8 @@ static RzBinDwarfDebugAbbrev *parse_abbrev_raw(const ut8 *obuf, size_t len) {
 	}
 	return da;
 beach:
+	free(def);
+	abbrev_decl_free(decl);
 	rz_bin_dwarf_debug_abbrev_free(da);
 	return NULL;
 }
@@ -2054,19 +2078,27 @@ RZ_API RzBinDwarfDebugInfo *rz_bin_dwarf_parse_info(RzBinFile *binfile, RzBinDwa
 	if (!info) {
 		goto cave_buf;
 	}
-	info->lookup_table = ht_up_new_size(info->n_dwarf_dies, NULL, NULL, NULL);
-	if (!info->lookup_table) {
+	info->die_tbl = ht_up_new_size(info->n_dwarf_dies, NULL, NULL, NULL);
+	if (!info->die_tbl) {
 		rz_bin_dwarf_debug_info_free(info);
 		info = NULL;
 		goto cave_buf;
 	}
+	info->unit_tbl = ht_up_new(NULL, NULL, NULL);
+	if (!info->unit_tbl) {
+		rz_bin_dwarf_debug_info_free(info);
+		info = NULL;
+		goto cave_buf;
+	}
+
 	// build hashtable after whole parsing because of possible relocations
 	size_t i, j;
 	for (i = 0; i < info->count; i++) {
 		RzBinDwarfCompUnit *unit = &info->comp_units[i];
+		ht_up_insert(info->unit_tbl, unit->offset, unit);
 		for (j = 0; j < unit->count; j++) {
 			RzBinDwarfDie *die = &unit->dies[j];
-			ht_up_insert(info->lookup_table, die->offset, die); // optimization for further processing}
+			ht_up_insert(info->die_tbl, die->offset, die); // optimization for further processing}
 		}
 	}
 
