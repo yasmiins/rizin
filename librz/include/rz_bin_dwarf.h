@@ -793,7 +793,8 @@ typedef struct {
 
 typedef struct {
 	RzPVector /*RzBinDwarfAbbrevDecl**/ decls;
-	HtUP /*size_t,RzBinDwarfAbbrevDecl**/ *tbl;
+	HtUP /*size_t,RzBinDwarfAbbrevDecl**/ *decl_tbl;
+	HtUU /*size_t,size_t*/ *decl_index_tbl;
 } RzBinDwarfDebugAbbrev;
 
 #define DWARF_FALSE 0
@@ -942,17 +943,18 @@ RZ_API const char *rz_bin_dwarf_get_attr_form_name(ut64 form_code);
 RZ_API const char *rz_bin_dwarf_get_unit_type_name(ut64 unit_type);
 RZ_API const char *rz_bin_dwarf_get_lang_name(ut64 lang);
 
-RZ_API RzList /*<RzBinDwarfARangeSet *>*/ *rz_bin_dwarf_parse_aranges(RzBinFile *binfile);
-RZ_API RzBinDwarfDebugAbbrev *rz_bin_dwarf_parse_abbrev(RzBinFile *binfile);
-RZ_API RzBinDwarfDebugInfo *rz_bin_dwarf_parse_info(RzBinFile *binfile, RzBinDwarfDebugAbbrev *da);
-RZ_API HtUP /*<offset, RzBinDwarfLocList *>*/ *rz_bin_dwarf_parse_loc(RzBinFile *binfile, int addr_size);
+RZ_API RzList /*<RzBinDwarfARangeSet *>*/ *rz_bin_dwarf_aranges_parse(RzBinFile *binfile);
+RZ_API RzBinDwarfDebugAbbrev *rz_bin_dwarf_abbrev_parse(RzBinFile *binfile);
+RZ_API RzBinDwarfDebugInfo *rz_bin_dwarf_info_parse(RzBinFile *binfile, RzBinDwarfDebugAbbrev *da);
+RZ_API HtUP /*<offset, RzBinDwarfLocList *>*/ *rz_bin_dwarf_loc_parse(RzBinFile *binfile, int addr_size);
 RZ_API void rz_bin_dwarf_arange_set_free(RzBinDwarfARangeSet *set);
 RZ_API void rz_bin_dwarf_loc_free(HtUP /*<offset, RzBinDwarfLocList *>*/ *loc_table);
-RZ_API void rz_bin_dwarf_debug_info_free(RzBinDwarfDebugInfo *inf);
-RZ_API void rz_bin_dwarf_debug_abbrev_free(RzBinDwarfDebugAbbrev *da);
-RZ_API size_t rz_bin_dwarf_debug_abbrev_count(RZ_NONNULL const RzBinDwarfDebugAbbrev *da);
-RZ_API RzBinDwarfAbbrevDecl *rz_bin_dwarf_debug_abbrev_get(RZ_NONNULL const RzBinDwarfDebugAbbrev *da, size_t idx);
-RZ_API RzBinDwarfAbbrevDecl *rz_bin_dwarf_debug_abbrev_by_offet(RZ_NONNULL const RzBinDwarfDebugAbbrev *da, size_t offset);
+RZ_API void rz_bin_dwarf_info_free(RzBinDwarfDebugInfo *inf);
+RZ_API void rz_bin_dwarf_abbrev_free(RzBinDwarfDebugAbbrev *da);
+RZ_API size_t rz_bin_dwarf_abbrev_count(RZ_NONNULL const RzBinDwarfDebugAbbrev *da);
+RZ_API RzBinDwarfAbbrevDecl *rz_bin_dwarf_abbrev_get(RZ_NONNULL const RzBinDwarfDebugAbbrev *da, size_t idx);
+RZ_API RzBinDwarfAbbrevDecl *rz_bin_dwarf_abbrev_by_offet(RZ_NONNULL const RzBinDwarfDebugAbbrev *da, size_t offset);
+RZ_API size_t rz_bin_dwarf_abbrev_index_by_offet(RZ_NONNULL const RzBinDwarfDebugAbbrev *da, size_t offset);
 RZ_API size_t rz_bin_dwarf_abbrev_decl_count(RZ_NONNULL const RzBinDwarfAbbrevDecl *decl);
 RZ_API RzBinDwarfAttrDef *rz_bin_dwarf_abbrev_decl_get(RZ_NONNULL const RzBinDwarfAbbrevDecl *decl, size_t idx);
 
