@@ -8,21 +8,21 @@
 RZ_API void rz_type_base_enum_case_free(void *e, void *user) {
 	(void)user;
 	RzTypeEnumCase *cas = e;
-	free((char *)cas->name);
+	free(cas->name);
 }
 
 RZ_API void rz_type_base_struct_member_free(void *e, void *user) {
 	(void)user;
 	RzTypeStructMember *member = e;
 	rz_type_free(member->type);
-	free((char *)member->name);
+	free(member->name);
 }
 
 RZ_API void rz_type_base_union_member_free(void *e, void *user) {
 	(void)user;
 	RzTypeUnionMember *member = e;
 	rz_type_free(member->type);
-	free((char *)member->name);
+	free(member->name);
 }
 
 /**

@@ -1195,8 +1195,9 @@ static RZ_DEPRECATE char *type_as_string(const RzTypeDB *typedb, RZ_NONNULL cons
 }
 
 static void sdb_set_and_free(Sdb *db, char *k, char *v) {
-	sdb_set_owned(db, k, v, 0);
+	sdb_set(db, k, v, 0);
 	free(k);
+	free(v);
 }
 
 static void sdb_set_and_freek(Sdb *db, char *k, const char *v) {

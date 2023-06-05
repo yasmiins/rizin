@@ -2200,7 +2200,7 @@ static inline RzBinDwarfLocRange *create_loc_range(ut64 start, ut64 end, RzBinDw
 	return range;
 }
 
-static void free_loc_table_list(RzBinDwarfLocList *loc_list) {
+static void loc_list_tree(RzBinDwarfLocList *loc_list) {
 	RzListIter *iter;
 	RzBinDwarfLocRange *range;
 	rz_list_foreach (loc_list->list, iter, range) {
@@ -2210,6 +2210,14 @@ static void free_loc_table_list(RzBinDwarfLocList *loc_list) {
 	}
 	rz_list_free(loc_list->list);
 	free(loc_list);
+}
+
+static void block_free(RzBinDwarfBlock *block) {
+	if (!block) {
+		return;
+	}
+	free(block->data);
+	free(block);
 }
 
 static HtUP *parse_loc_raw(HtUP /*<offset, List *<LocListEntry>*/ *loc_table, const ut8 *buf, size_t len, size_t addr_size,
@@ -2231,7 +2239,9 @@ static HtUP *parse_loc_raw(HtUP /*<offset, List *<LocListEntry>*/ *loc_table, co
 
 		if (start_addr == 0 && end_addr == 0) { /* end of list entry: 0, 0 */
 			if (loc_list) {
-				ht_up_insert(loc_table, loc_list->offset, loc_list);
+				if (!ht_up_insert(loc_table, loc_list->offset, loc_list)) {
+					loc_list_tree(loc_list);
+				}
 				list_offset = buf - buf_start;
 				loc_list = NULL;
 			}
@@ -2251,7 +2261,7 @@ static HtUP *parse_loc_raw(HtUP /*<offset, List *<LocListEntry>*/ *loc_table, co
 			buf = fill_block_data(buf, buf_end, block);
 			range = create_loc_range(start_addr + address_base, end_addr + address_base, block);
 			if (!range) {
-				free(block);
+				block_free(block);
 			}
 			rz_list_append(loc_list->list, range);
 			range = NULL;
@@ -2259,7 +2269,7 @@ static HtUP *parse_loc_raw(HtUP /*<offset, List *<LocListEntry>*/ *loc_table, co
 	}
 	/* if for some reason end of list is missing, then loc_list would leak */
 	if (loc_list) {
-		free_loc_table_list(loc_list);
+		loc_list_tree(loc_list);
 	}
 	return loc_table;
 }
@@ -2290,14 +2300,14 @@ RZ_API HtUP /*<offset, RzBinDwarfLocList *>*/ *rz_bin_dwarf_loc_parse(RzBinFile 
 	return loc_table;
 }
 
-static void free_loc_table_entry(HtUPKv *kv) {
+static void ht_loc_list_free(HtUPKv *kv) {
 	if (kv) {
-		free_loc_table_list(kv->value);
+		loc_list_tree(kv->value);
 	}
 }
 
 RZ_API void rz_bin_dwarf_loc_free(HtUP /*<offset, RzBinDwarfLocList *>*/ *loc_table) {
 	rz_return_if_fail(loc_table);
-	loc_table->opt.freefn = free_loc_table_entry;
+	loc_table->opt.freefn = ht_loc_list_free;
 	ht_up_free(loc_table);
 }
