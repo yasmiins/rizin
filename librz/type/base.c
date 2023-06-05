@@ -187,9 +187,24 @@ RZ_API RZ_OWN RzBaseType *rz_type_base_type_new(RzBaseTypeKind kind) {
  * \param typedb Type Database instance
  * \param type RzBaseType to save
  */
-RZ_API void rz_type_db_save_base_type(const RzTypeDB *typedb, const RzBaseType *type) {
+RZ_API void rz_type_db_save_base_type(const RzTypeDB *typedb, RzBaseType *type) {
 	rz_return_if_fail(typedb && type && type->name);
-	ht_pp_insert(typedb->types, type->name, (void *)type);
+	if (!ht_pp_insert(typedb->types, type->name, (void *)type)) {
+		rz_type_base_type_free(type);
+	}
+}
+
+/**
+ * \brief Update RzBaseType \p type in RzTypeDB \p typedb
+ *
+ * \param typedb Type Database instance
+ * \param type RzBaseType to save
+ */
+RZ_API void rz_type_db_update_base_type(const RzTypeDB *typedb, RZ_OWN RzBaseType *type) {
+	rz_return_if_fail(typedb && type && type->name);
+	if (!ht_pp_update(typedb->types, type->name, (void *)type)) {
+		rz_type_base_type_free(type);
+	}
 }
 
 /**
