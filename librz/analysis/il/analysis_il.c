@@ -228,6 +228,16 @@ RZ_API bool rz_analysis_il_vm_sync_to_reg(RzAnalysisILVM *vm, RZ_NONNULL RzReg *
 	return rz_il_vm_sync_to_reg(vm->vm, vm->reg_binding, reg);
 }
 
+static void il_events(RzILVM *vm, RzStrBuf *sb) {
+	void **it;
+	RzILEvent *evt;
+	rz_pvector_foreach (vm->events, it) {
+		evt = *it;
+		rz_il_event_stringify(evt, sb);
+		rz_strbuf_append(sb, "\n");
+	}
+}
+
 /**
  * Repeatedly perform steps in the VM until the condition callback returns false
  *
@@ -251,12 +261,14 @@ RZ_API RzAnalysisILStepResult rz_analysis_il_vm_step_while(RZ_NONNULL RzAnalysis
 	}
 
 	RzAnalysisILStepResult res = RZ_ANALYSIS_IL_STEP_RESULT_SUCCESS;
+	RzStrBuf sb;
+	ut64 addr = 0;
 	while (cond(vm, user)) {
-		ut64 addr = rz_bv_to_ut64(vm->vm->pc);
+		addr = rz_bv_to_ut64(vm->vm->pc);
 		ut8 code[32] = { 0 };
 		analysis->read_at(analysis, addr, code, sizeof(code));
 		RzAnalysisOp op = { 0 };
-		int r = rz_analysis_op(analysis, &op, addr, code, sizeof(code), RZ_ANALYSIS_OP_MASK_IL | RZ_ANALYSIS_OP_MASK_HINT);
+		int r = rz_analysis_op(analysis, &op, addr, code, sizeof(code), RZ_ANALYSIS_OP_MASK_IL | RZ_ANALYSIS_OP_MASK_HINT | RZ_ANALYSIS_OP_MASK_DISASM);
 		RzILOpEffect *ilop = r < 0 ? NULL : op.il_op;
 
 		if (ilop) {
@@ -264,6 +276,18 @@ RZ_API RzAnalysisILStepResult rz_analysis_il_vm_step_while(RZ_NONNULL RzAnalysis
 			if (!succ) {
 				res = RZ_ANALYSIS_IL_STEP_IL_RUNTIME_ERROR;
 			}
+
+			rz_strbuf_init(&sb);
+			rz_il_op_effect_stringify(op.il_op, &sb, true);
+			rz_strbuf_append(&sb, "\n");
+			il_events(vm->vm, &sb);
+
+			char *il_stmt = rz_strbuf_get(&sb);
+			eprintf("0x%llx [%x%x%x%x] %s\n"
+				"0x%llx %s\n",
+				addr, code[0], code[1], code[2], code[3],
+				op.mnemonic, addr, il_stmt);
+
 		} else {
 			res = RZ_ANALYSIS_IL_STEP_INVALID_OP;
 		}
@@ -273,6 +297,7 @@ RZ_API RzAnalysisILStepResult rz_analysis_il_vm_step_while(RZ_NONNULL RzAnalysis
 			break;
 		}
 	}
+	rz_strbuf_fini(&sb);
 	if (reg) {
 		rz_analysis_il_vm_sync_to_reg(vm, reg);
 	}

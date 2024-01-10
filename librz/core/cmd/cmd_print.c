@@ -2554,8 +2554,16 @@ static void core_print_raw_buffer(RzStrStringifyOpt *opt) {
 }
 
 static RzCmdStatus core_auto_detect_and_print_string(RzCore *core, bool stop_at_nil, ut32 offset, RzOutputMode mode) {
-	const ut8 *buffer = core->block + offset;
+	//	const ut8 *buffer = core->block + offset;
 	const ut32 length = core->blocksize - offset;
+	ut8 *buffer = RZ_NEWS0(ut8, length);
+	if (!buffer) {
+		return RZ_CMD_STATUS_ERROR;
+	}
+	if (!rz_io_read_at(core->io, core->offset, buffer, length)) {
+		goto err;
+	}
+
 	const char *enc_name = rz_config_get(core->config, "bin.str.enc");
 	RzStrEnc encoding = rz_str_enc_string_as_type(enc_name);
 	RzStrStringifyOpt opt = { 0 };
@@ -2576,9 +2584,12 @@ static RzCmdStatus core_auto_detect_and_print_string(RzCore *core, bool stop_at_
 		print_json_string(core, buffer, length, encoding, stop_at_nil);
 		break;
 	default:
+	err:
+		free(buffer);
 		RZ_LOG_ERROR("core: unsupported output mode\n");
 		return RZ_CMD_STATUS_ERROR;
 	}
+	free(buffer);
 	return RZ_CMD_STATUS_OK;
 }
 
