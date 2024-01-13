@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2012-2020 pancake <pancake@nopcode.org>
+// SPDX-FileCopyrightText: 2014 Fedor Sakharov <fedor.sakharov@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-only
+
 static void update_flags(RzStrBuf *out, int flags) {
 	if (flags & V850_FLAG_CY) {
 		rz_strbuf_append(out, "31,$c,cy,:=");
@@ -76,7 +80,7 @@ static void v850_esil(RzStrBuf *out, ut8 opcode, ut16 word1, ut16 word2) {
 		}
 		rz_strbuf_appendf(out, "%s,pc,=", F1_RN1(word1));
 		break;
-	case V850_JARL2:
+	case V850_JARL:
 		// TODO: fix displacement reading
 		rz_strbuf_appendf(out, "pc,%s,=,pc,%u,+=", F5_RN2(word1), F5_DISP(((ut32)word2 << 16) | word1));
 		break;

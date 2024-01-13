@@ -11,6 +11,7 @@
 #include <rz_endian.h>
 
 #include <v850_disas.h>
+#include "../arch/v850/v850_il.h"
 
 // Format I
 #define F1_REG1(instr) ((instr) & 0x1F)
@@ -206,11 +207,14 @@ static int v850_op(RzAnalysis *analysis, RzAnalysisOp *op, ut64 addr, const ut8 
 		op->jump = word1; // UT64_MAX; // this is n RJMP instruction .. F1_RN1 (word1);
 		op->fail = addr + 2;
 		break;
-	case V850_JARL2:
+	case V850_JARL:
 		// TODO: fix displacement reading
 		op->type = RZ_ANALYSIS_OP_TYPE_JMP;
 		op->jump = addr + F5_DISP(((ut32)word2 << 16) | word1);
 		op->fail = addr + 4;
+		break;
+	case V850_JR:
+		// TODO: V850_JR
 		break;
 	case V850_OR:
 	case V850_ORI:
@@ -303,6 +307,16 @@ static int v850_op(RzAnalysis *analysis, RzAnalysisOp *op, ut64 addr, const ut8 
 
 	if (mask & RZ_ANALYSIS_OP_MASK_DISASM) {
 		op->mnemonic = rz_str_newf("%s %s", cmd.instr, cmd.operands);
+	}
+
+	if (mask & RZ_ANALYSIS_OP_MASK_IL) {
+		V850AnalysisContext ctx = { 0 };
+		ctx.a = analysis;
+		ctx.w1 = word1;
+		ctx.w2 = word2;
+		ctx.pc = addr;
+
+		op->il_op = v850_il_op(&ctx);
 	}
 
 	return ret;
@@ -411,6 +425,7 @@ RzAnalysisPlugin rz_analysis_plugin_v850 = {
 	.esil = true,
 	.archinfo = archinfo,
 	.get_reg_profile = get_reg_profile,
+	.il_config = v850_il_config
 };
 
 #ifndef RZ_PLUGIN_INCORE

@@ -51,8 +51,6 @@ static const char *instrs[] = {
 	[V850_LDHW] = "ld",
 	[V850_STB] = "st",
 	[V850_STHW] = "st",
-	[V850_JARL1] = "jarl",
-	[V850_JARL2] = "jarl",
 	[V850_BIT_MANIP] = "",
 	[V850_EXT1] = "",
 };
@@ -168,20 +166,28 @@ static int decode_bcond(const ut16 instr, int len, struct v850_cmd *cmd) {
 	return 2;
 }
 
-static int decode_jarl(const ut8 *instr, int len, struct v850_cmd *cmd) {
+static int decode_jump(const ut8 *instr, int len, struct v850_cmd *cmd) {
 	if (len < 4) {
 		return -1;
 	}
 
 	ut16 word1 = rz_read_le16(instr);
-	ut16 word2 = rz_read_at_le16(instr, 2);
+	if (((word1 >> 6) & 0x1f) != 0x1e) {
+		return -1;
+	}
 
 	ut8 reg = get_reg2(word1);
-	ut32 disp = (word2 << 6) | get_reg1(word1);
-
-	snprintf(cmd->instr, V850_INSTR_MAXLEN - 1, "%s", instrs[get_opcode(word1)]);
-	snprintf(cmd->operands, V850_INSTR_MAXLEN - 1, "0x%08x, r%d",
-		disp << 1, reg);
+	if (reg > 0) {
+		ut16 word2 = rz_read_at_le16(instr, 2);
+		ut32 disp = (word2 << 6) | get_reg1(word1);
+		snprintf(cmd->instr, V850_INSTR_MAXLEN - 1, "%s", "jarl");
+		snprintf(cmd->operands, V850_INSTR_MAXLEN - 1, "0x%08x, r%d",
+			disp << 1, reg);
+	} else {
+		ut8 reg1 = get_reg1(word1);
+		snprintf(cmd->instr, V850_INSTR_MAXLEN - 1, "%s", "jmp");
+		snprintf(cmd->operands, V850_INSTR_MAXLEN - 1, "r%d", reg1);
+	}
 
 	return 4;
 }
@@ -299,7 +305,7 @@ static int decode_extended(const ut8 *instr, int len, struct v850_cmd *cmd) {
 }
 
 int v850_decode_command(const ut8 *instr, int len, struct v850_cmd *cmd) {
-	int ret;
+	int ret = -1;
 
 	if (len < 2) {
 		return -1;
@@ -345,10 +351,6 @@ int v850_decode_command(const ut8 *instr, int len, struct v850_cmd *cmd) {
 	case V850_MULHI:
 		ret = decode_3operands(instr, len, cmd);
 		break;
-	case V850_JARL1:
-	case V850_JARL2:
-		ret = decode_jarl(instr, len, cmd);
-		break;
 	case V850_STB:
 	case V850_LDB:
 	case V850_LDHW:
@@ -365,7 +367,7 @@ int v850_decode_command(const ut8 *instr, int len, struct v850_cmd *cmd) {
 		if ((get_opcode(in) >> 2) == 0xB) {
 			ret = decode_bcond(in, len, cmd);
 		} else {
-			ret = -1;
+			ret = decode_jump(instr, len, cmd);
 		}
 	}
 

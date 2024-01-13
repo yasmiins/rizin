@@ -57,10 +57,10 @@ enum v850_cmd_opcodes {
 	V850_LDHW = 0x39,
 	V850_STB = 0x3A,
 	V850_STHW = 0x3B,
-	V850_JARL1 = 0x3C,
-	V850_JARL2 = 0x3D,
 	V850_BIT_MANIP = 0x3E,
 	V850_EXT1 = 0x3F,
+	V850_JARL,
+	V850_JR,
 };
 
 enum v850_conds {
