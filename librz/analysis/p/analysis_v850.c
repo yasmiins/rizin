@@ -13,8 +13,8 @@
 #include <v850_disas.h>
 
 // Format I
-#define F1_REG1(instr) ((instr)&0x1F)
-#define F1_REG2(instr) (((instr)&0xF800) >> 11)
+#define F1_REG1(instr) ((instr) & 0x1F)
+#define F1_REG2(instr) (((instr) & 0xF800) >> 11)
 
 #define F1_RN1(instr) (V850_REG_NAMES[F1_REG1(instr)])
 #define F1_RN2(instr) (V850_REG_NAMES[F1_REG2(instr)])
@@ -26,24 +26,24 @@
 #define F2_RN2(instr) (V850_REG_NAMES[F2_REG2(instr)])
 
 // Format III
-#define F3_COND(instr) ((instr)&0xF)
-#define F3_DISP(instr) (((instr)&0x70) >> 4) | (((instr)&0xF800) >> 7)
+#define F3_COND(instr) ((instr) & 0xF)
+#define F3_DISP(instr) (((instr) & 0x70) >> 4) | (((instr) & 0xF800) >> 7)
 
 // Format IV
-#define F4_DISP(instr) ((instr)&0x3F)
+#define F4_DISP(instr) ((instr) & 0x3F)
 #define F4_REG2(instr) F1_REG2(instr)
 
 #define F4_RN2(instr) (V850_REG_NAMES[F4_REG2(instr)])
 
 // Format V
 #define F5_REG2(instr) F1_REG2(instr)
-#define F5_DISP(instr) ((((ut32)(instr)&0xffff) << 31) | (((ut32)(instr)&0xffff0000) << 1))
+#define F5_DISP(instr) ((((ut32)(instr) & 0xffff) << 31) | (((ut32)(instr) & 0xffff0000) << 1))
 #define F5_RN2(instr)  (V850_REG_NAMES[F5_REG2(instr)])
 
 // Format VI
 #define F6_REG1(instr) F1_REG1(instr)
 #define F6_REG2(instr) F1_REG2(instr)
-#define F6_IMM(instr)  (((instr)&0xFFFF0000) >> 16)
+#define F6_IMM(instr)  (((instr) & 0xFFFF0000) >> 16)
 
 #define F6_RN1(instr) (V850_REG_NAMES[F6_REG1(instr)])
 #define F6_RN2(instr) (V850_REG_NAMES[F6_REG2(instr)])
@@ -59,8 +59,8 @@
 // Format VIII
 #define F8_REG1(instr) F1_REG1(instr)
 #define F8_DISP(instr) F6_IMM(instr)
-#define F8_BIT(instr)  (((instr)&0x3800) >> 11)
-#define F8_SUB(instr)  (((instr)&0xC000) >> 14)
+#define F8_BIT(instr)  (((instr) & 0x3800) >> 11)
+#define F8_SUB(instr)  (((instr) & 0xC000) >> 14)
 
 #define F8_RN1(instr) (V850_REG_NAMES[F8_REG1(instr)])
 #define F8_RN2(instr) (V850_REG_NAMES[F8_REG2(instr)])
@@ -69,7 +69,7 @@
 // Also regID/cond
 #define F9_REG1(instr) F1_REG1(instr)
 #define F9_REG2(instr) F1_REG2(instr)
-#define F9_SUB(instr)  (((instr)&0x7E00000) >> 21)
+#define F9_SUB(instr)  (((instr) & 0x7E00000) >> 21)
 
 #define F9_RN1(instr) (V850_REG_NAMES[F9_REG1(instr)])
 #define F9_RN2(instr) (V850_REG_NAMES[F9_REG2(instr)])
@@ -78,24 +78,24 @@
 // Format XI
 #define F11_REG1(instr) F1_REG1(instr)
 #define F11_REG2(instr) F1_REG2(instr)
-#define F11_REG3(instr) (((instr)&0xF8000000) >> 27)
-#define F11_SUB(instr)  ((((instr)&0x7E00000) >> 20) | (((instr)&2) >> 1))
+#define F11_REG3(instr) (((instr) & 0xF8000000) >> 27)
+#define F11_SUB(instr)  ((((instr) & 0x7E00000) >> 20) | (((instr) & 2) >> 1))
 
 #define F11_RN1(instr) (V850_REG_NAMES[F11_REG1(instr)])
 #define F11_RN2(instr) (V850_REG_NAMES[F11_REG2(instr)])
 // Format XII
-#define F12_IMM(instr)  (F1_REG1(instr) | (((instr)&0x7C0000) >> 13))
+#define F12_IMM(instr)  (F1_REG1(instr) | (((instr) & 0x7C0000) >> 13))
 #define F12_REG2(instr) F1_REG2(instr)
-#define F12_REG3(instr) (((instr)&0xF8000000) >> 27)
-#define F12_SUB(instr)  ((((instr)&0x7800001) >> 22) | (((instr)&2) >> 1))
+#define F12_REG3(instr) (((instr) & 0xF8000000) >> 27)
+#define F12_SUB(instr)  ((((instr) & 0x7800001) >> 22) | (((instr) & 2) >> 1))
 
 #define F12_RN2(instr) (V850_REG_NAMES[F12_REG2(instr)])
 #define F12_RN3(instr) (V850_REG_NAMES[F12_REG3(instr)])
 
 // Format XIII
-#define F13_IMM(instr) (((instr)&0x3E) >> 1)
+#define F13_IMM(instr) (((instr) & 0x3E) >> 1)
 // Also a subopcode
-#define F13_REG2(instr) (((instr)&0x1F0000) >> 16)
+#define F13_REG2(instr) (((instr) & 0x1F0000) >> 16)
 #define F13_LIST(instr) (((instr) && 0xFFE00000) >> 21)
 
 #define F13_RN2(instr) (V850_REG_NAMES[F13_REG2(instr)])
@@ -135,42 +135,11 @@ static const char *V850_REG_NAMES[] = {
 	"lp",
 };
 
-static void update_flags(RzAnalysisOp *op, int flags) {
-	if (flags & V850_FLAG_CY) {
-		rz_strbuf_append(&op->esil, "31,$c,cy,:=");
-	}
-	if (flags & V850_FLAG_OV) {
-		rz_strbuf_append(&op->esil, ",31,$o,ov,:=");
-	}
-	if (flags & V850_FLAG_S) {
-		rz_strbuf_append(&op->esil, ",31,$s,s,:=");
-	}
-	if (flags & V850_FLAG_Z) {
-		rz_strbuf_append(&op->esil, ",$z,z,:=");
-	}
-}
-
-static void clear_flags(RzAnalysisOp *op, int flags) {
-	if (flags & V850_FLAG_CY) {
-		rz_strbuf_append(&op->esil, ",0,cy,=");
-	}
-	if (flags & V850_FLAG_OV) {
-		rz_strbuf_append(&op->esil, ",0,ov,=");
-	}
-	if (flags & V850_FLAG_S) {
-		rz_strbuf_append(&op->esil, ",0,s,=");
-	}
-	if (flags & V850_FLAG_Z) {
-		rz_strbuf_append(&op->esil, ",0,z,=");
-	}
-}
+#include "../arch/v850/v850_esil.inc"
 
 static int v850_op(RzAnalysis *analysis, RzAnalysisOp *op, ut64 addr, const ut8 *buf, int len, RzAnalysisOpMask mask) {
 	int ret = 0;
 	ut8 opcode = 0;
-	const char *reg1 = NULL;
-	const char *reg2 = NULL;
-	ut32 bitmask = 0;
 	ut16 destaddr = 0;
 	st16 destaddrs = 0;
 	ut16 word1 = 0, word2 = 0;
@@ -199,18 +168,8 @@ static int v850_op(RzAnalysis *analysis, RzAnalysisOp *op, ut64 addr, const ut8 
 	switch (opcode) {
 	case V850_MOV_IMM5:
 	case V850_MOV:
-		// 2 formats
-		op->type = RZ_ANALYSIS_OP_TYPE_MOV;
-		if (opcode != V850_MOV_IMM5) { // Format I
-			rz_strbuf_appendf(&op->esil, "%s,%s,=", F1_RN1(word1), F1_RN2(word1));
-		} else { // Format II
-			rz_strbuf_appendf(&op->esil, "%" PFMT64d ",%s,=", (st64)(F2_IMM(word1)), F2_RN2(word1));
-		}
-		break;
 	case V850_MOVEA:
 		op->type = RZ_ANALYSIS_OP_TYPE_MOV;
-		// FIXME: to decide about reading 16/32 bit and use only macros to access
-		rz_strbuf_appendf(&op->esil, "%s,0xffff,&,%u,+,%s,=", F6_RN1(word1), word2, F6_RN2(word1));
 		break;
 	case V850_SLDB:
 	case V850_SLDH:
@@ -234,15 +193,9 @@ static int v850_op(RzAnalysis *analysis, RzAnalysisOp *op, ut64 addr, const ut8 
 		break;
 	case V850_NOT:
 		op->type = RZ_ANALYSIS_OP_TYPE_NOT;
-		rz_strbuf_appendf(&op->esil, "%s,0xffffffff,^,%s,=", F1_RN1(word1), F1_RN2(word1));
-		update_flags(op, V850_FLAG_S | V850_FLAG_Z);
-		clear_flags(op, V850_FLAG_OV);
 		break;
 	case V850_DIVH:
 		op->type = RZ_ANALYSIS_OP_TYPE_DIV;
-		rz_strbuf_appendf(&op->esil, "%s,%s,0xffff,&,/,%s,=",
-			F1_RN1(word1), F1_RN2(word1), F1_RN2(word1));
-		update_flags(op, V850_FLAG_OV | V850_FLAG_S | V850_FLAG_Z);
 		break;
 	case V850_JMP:
 		if (F1_REG1(word1) == 31) {
@@ -252,93 +205,40 @@ static int v850_op(RzAnalysis *analysis, RzAnalysisOp *op, ut64 addr, const ut8 
 		}
 		op->jump = word1; // UT64_MAX; // this is n RJMP instruction .. F1_RN1 (word1);
 		op->fail = addr + 2;
-		rz_strbuf_appendf(&op->esil, "%s,pc,=", F1_RN1(word1));
 		break;
 	case V850_JARL2:
 		// TODO: fix displacement reading
 		op->type = RZ_ANALYSIS_OP_TYPE_JMP;
 		op->jump = addr + F5_DISP(((ut32)word2 << 16) | word1);
 		op->fail = addr + 4;
-		rz_strbuf_appendf(&op->esil, "pc,%s,=,pc,%u,+=", F5_RN2(word1), F5_DISP(((ut32)word2 << 16) | word1));
 		break;
-#if 0 // same opcode as JARL?
-	case V850_JR:
-		jumpdisp = DISP26(word1, word2);
-		op->type = RZ_ANALYSIS_OP_TYPE_JMP;
-		rz_strbuf_appendf (&op->esil, "$$,%d,+,pc,=", jumpdisp);
-		break;
-#endif
 	case V850_OR:
-		op->type = RZ_ANALYSIS_OP_TYPE_OR;
-		rz_strbuf_appendf(&op->esil, "%s,%s,|=", F1_RN1(word1), F1_RN2(word1));
-		update_flags(op, V850_FLAG_S | V850_FLAG_Z);
-		clear_flags(op, V850_FLAG_OV);
-		break;
 	case V850_ORI:
 		op->type = RZ_ANALYSIS_OP_TYPE_OR;
-		rz_strbuf_appendf(&op->esil, "%hu,%s,|,%s,=",
-			word2, F6_RN1(word1), F6_RN2(word1));
-		update_flags(op, V850_FLAG_S | V850_FLAG_Z);
-		clear_flags(op, V850_FLAG_OV);
 		break;
 	case V850_MULH:
 	case V850_MULH_IMM5:
 		op->type = RZ_ANALYSIS_OP_TYPE_MUL;
 		break;
 	case V850_XOR:
-		op->type = RZ_ANALYSIS_OP_TYPE_XOR;
-		rz_strbuf_appendf(&op->esil, "%s,%s,^=", F1_RN1(word1), F1_RN2(word1));
-		update_flags(op, V850_FLAG_S | V850_FLAG_Z);
-		clear_flags(op, V850_FLAG_OV);
-		break;
 	case V850_XORI:
 		op->type = RZ_ANALYSIS_OP_TYPE_XOR;
-		rz_strbuf_appendf(&op->esil, "%hu,%s,^,%s,=", word2, F6_RN1(word1), F6_RN2(word1));
-		update_flags(op, V850_FLAG_S | V850_FLAG_Z);
-		clear_flags(op, V850_FLAG_OV);
 		break;
 	case V850_AND:
-		op->type = RZ_ANALYSIS_OP_TYPE_AND;
-		rz_strbuf_appendf(&op->esil, "%s,%s,&=", F1_RN1(word1), F1_RN2(word1));
-		update_flags(op, V850_FLAG_S | V850_FLAG_Z);
-		clear_flags(op, V850_FLAG_OV);
-		break;
 	case V850_ANDI:
 		op->type = RZ_ANALYSIS_OP_TYPE_AND;
-		rz_strbuf_appendf(&op->esil, "%hu,%s,&,%s,=", word2, F6_RN1(word1), F6_RN2(word1));
-		update_flags(op, V850_FLAG_Z);
-		clear_flags(op, V850_FLAG_OV | V850_FLAG_S);
 		break;
 	case V850_CMP:
-		op->type = RZ_ANALYSIS_OP_TYPE_CMP;
-		rz_strbuf_appendf(&op->esil, "%s,%s,==", F1_RN1(word1), F1_RN2(word1));
-		update_flags(op, -1);
-		break;
 	case V850_CMP_IMM5:
-		op->type = RZ_ANALYSIS_OP_TYPE_CMP;
-		rz_strbuf_appendf(&op->esil, "%d,%s,==", (st8)SIGN_EXT_T5(F2_IMM(word1)), F2_RN2(word1));
-		update_flags(op, -1);
-		break;
 	case V850_TST:
 		op->type = RZ_ANALYSIS_OP_TYPE_CMP;
-		rz_strbuf_appendf(&op->esil, "%s,%s,&", F1_RN1(word1), F1_RN2(word1));
-		update_flags(op, V850_FLAG_S | V850_FLAG_Z);
-		clear_flags(op, V850_FLAG_OV);
 		break;
 	case V850_SUB:
-		op->type = RZ_ANALYSIS_OP_TYPE_SUB;
-		rz_strbuf_appendf(&op->esil, "%s,%s,-=", F1_RN1(word1), F1_RN2(word1));
-		update_flags(op, -1);
-		break;
 	case V850_SUBR:
 		op->type = RZ_ANALYSIS_OP_TYPE_SUB;
-		rz_strbuf_appendf(&op->esil, "%s,%s,-,%s=", F1_RN2(word1), F1_RN1(word1), F1_RN2(word1));
-		update_flags(op, -1);
 		break;
 	case V850_ADD:
 		op->type = RZ_ANALYSIS_OP_TYPE_ADD;
-		rz_strbuf_appendf(&op->esil, "%s,%s,+=", F1_RN1(word1), F1_RN2(word1));
-		update_flags(op, -1);
 		break;
 	case V850_ADD_IMM5:
 		op->type = RZ_ANALYSIS_OP_TYPE_ADD;
@@ -347,8 +247,6 @@ static int v850_op(RzAnalysis *analysis, RzAnalysisOp *op, ut64 addr, const ut8 
 			op->stackptr = F2_IMM(word1);
 			op->val = op->stackptr;
 		}
-		rz_strbuf_appendf(&op->esil, "%d,%s,+=", (st8)SIGN_EXT_T5(F2_IMM(word1)), F2_RN2(word1));
-		update_flags(op, -1);
 		break;
 	case V850_ADDI:
 		op->type = RZ_ANALYSIS_OP_TYPE_ADD;
@@ -357,28 +255,15 @@ static int v850_op(RzAnalysis *analysis, RzAnalysisOp *op, ut64 addr, const ut8 
 			op->stackptr = (st64)word2;
 			op->val = op->stackptr;
 		}
-		rz_strbuf_appendf(&op->esil, "%d,%s,+,%s,=", (st32)word2, F6_RN1(word1), F6_RN2(word1));
-		update_flags(op, -1);
 		break;
 	case V850_SHR_IMM5:
 		op->type = RZ_ANALYSIS_OP_TYPE_SHR;
-		rz_strbuf_appendf(&op->esil, "%u,%s,>>=", (ut8)F2_IMM(word1), F2_RN2(word1));
-		update_flags(op, V850_FLAG_CY | V850_FLAG_S | V850_FLAG_Z);
-		clear_flags(op, V850_FLAG_OV);
 		break;
 	case V850_SAR_IMM5:
 		op->type = RZ_ANALYSIS_OP_TYPE_SAR;
-		ut16 imm5 = F2_IMM(word1);
-		reg2 = F2_RN2(word1);
-		rz_strbuf_appendf(&op->esil, "31,%s,>>,?{,%u,32,-,%u,1,<<,--,<<,}{,0,},%u,%s,>>,|,%s,=", reg2, (ut8)imm5, (ut8)imm5, (ut8)imm5, reg2, reg2);
-		update_flags(op, V850_FLAG_CY | V850_FLAG_S | V850_FLAG_Z);
-		clear_flags(op, V850_FLAG_OV);
 		break;
 	case V850_SHL_IMM5:
 		op->type = RZ_ANALYSIS_OP_TYPE_SHL;
-		rz_strbuf_appendf(&op->esil, "%u,%s,<<=", (ut8)F2_IMM(word1), F2_RN2(word1));
-		update_flags(op, V850_FLAG_CY | V850_FLAG_S | V850_FLAG_Z);
-		clear_flags(op, V850_FLAG_OV);
 		break;
 	case V850_BCOND:
 	case V850_BCOND2:
@@ -395,94 +280,29 @@ static int v850_op(RzAnalysis *analysis, RzAnalysisOp *op, ut64 addr, const ut8 
 		op->jump = addr + destaddrs;
 		op->fail = addr + 2;
 		op->type = RZ_ANALYSIS_OP_TYPE_CJMP;
-		switch (F3_COND(word1)) {
-		case V850_COND_V:
-			rz_strbuf_appendf(&op->esil, "ov");
-			break;
-		case V850_COND_CL:
-			rz_strbuf_appendf(&op->esil, "cy");
-			break;
-		case V850_COND_ZE:
-			rz_strbuf_appendf(&op->esil, "z");
-			break;
-		case V850_COND_NH:
-			rz_strbuf_appendf(&op->esil, "cy,z,|");
-			break;
-		case V850_COND_N:
-			rz_strbuf_appendf(&op->esil, "s");
-			break;
-		case V850_COND_AL: // Always
-			rz_strbuf_appendf(&op->esil, "1");
-			break;
-		case V850_COND_LT:
-			rz_strbuf_appendf(&op->esil, "s,ov,^");
-			break;
-		case V850_COND_LE:
-			rz_strbuf_appendf(&op->esil, "s,ov,^,z,|");
-			break;
-		case V850_COND_NV:
-			rz_strbuf_appendf(&op->esil, "ov,!");
-			break;
-		case V850_COND_NL:
-			rz_strbuf_appendf(&op->esil, "cy,!");
-			break;
-		case V850_COND_NE:
-			rz_strbuf_appendf(&op->esil, "z,!");
-			break;
-		case V850_COND_H:
-			rz_strbuf_appendf(&op->esil, "cy,z,|,!");
-			break;
-		case V850_COND_P:
-			rz_strbuf_appendf(&op->esil, "s,!");
-			break;
-		case V850_COND_GE:
-			rz_strbuf_appendf(&op->esil, "s,ov,^,!");
-			break;
-		case V850_COND_GT:
-			rz_strbuf_appendf(&op->esil, "s,ov,^,z,|,!");
-			break;
-		}
-		rz_strbuf_appendf(&op->esil, ",?{,$$,%d,+,pc,=,}", destaddrs);
 		break;
-	case V850_BIT_MANIP: {
-		ut8 bitop = word1 >> 14;
-		switch (bitop) {
-		case V850_BIT_CLR1:
-			bitmask = (1 << F8_BIT(word1));
-			rz_strbuf_appendf(&op->esil, "%hu,%s,+,[1],%u,&,%hu,%s,+,=[1]", word2, F8_RN1(word1), bitmask, word2, F8_RN1(word1));
-			// TODO: Read the value of the memory byte and set zero flag accordingly!
-			break;
-		case V850_BIT_NOT1:
-			bitmask = (1 << F8_BIT(word1));
-			rz_strbuf_appendf(&op->esil, "%hu,%s,+,[1],%u,^,%hu,%s,+,=[1]", word2, F8_RN1(word1), bitmask, word2, F8_RN1(word1));
-			// TODO: Read the value of the memory byte and set zero flag accordingly!
-			break;
-		}
-	} break;
+	case V850_BIT_MANIP: break;
 	case V850_EXT1:
 		switch (get_subopcode(word1 | (ut32)word2 << 16)) {
 		case V850_EXT_SHL:
 			op->type = RZ_ANALYSIS_OP_TYPE_SHL;
-			rz_strbuf_appendf(&op->esil, "%s,%s,<<=", F9_RN1(word1), F9_RN2(word1));
-			update_flags(op, V850_FLAG_CY | V850_FLAG_S | V850_FLAG_Z);
-			clear_flags(op, V850_FLAG_OV);
 			break;
 		case V850_EXT_SHR:
 			op->type = RZ_ANALYSIS_OP_TYPE_SHR;
-			rz_strbuf_appendf(&op->esil, "%s,%s,>>=", F9_RN1(word1), F9_RN2(word1));
-			update_flags(op, V850_FLAG_CY | V850_FLAG_S | V850_FLAG_Z);
-			clear_flags(op, V850_FLAG_OV);
 			break;
 		case V850_EXT_SAR:
 			op->type = RZ_ANALYSIS_OP_TYPE_SAR;
-			reg1 = F9_RN1(word1);
-			reg2 = F9_RN2(word1);
-			rz_strbuf_appendf(&op->esil, "31,%s,>>,?{,%s,32,-,%s,1,<<,--,<<,}{,0,},%s,%s,>>,|,%s,=", reg2, reg1, reg1, reg1, reg2, reg2);
-			update_flags(op, V850_FLAG_CY | V850_FLAG_S | V850_FLAG_Z);
-			clear_flags(op, V850_FLAG_OV);
 			break;
 		}
 		break;
+	}
+
+	if (mask & RZ_ANALYSIS_OP_MASK_ESIL) {
+		v850_esil(&op->esil, opcode, word1, word2);
+	}
+
+	if (mask & RZ_ANALYSIS_OP_MASK_DISASM) {
+		op->mnemonic = rz_str_newf("%s %s", cmd.instr, cmd.operands);
 	}
 
 	return ret;
